@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+    </style>
+
+    <style name="Button.Primary" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+    </style>
+
+    <dimen name="button_corner_radius">16dp</dimen>
+</resources>

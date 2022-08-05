@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">TelegramWear</string>
+    <!--
+    This string is used for square devices and overridden by hello_world in
+    values-round/strings.xml for round devices.
+    -->
+    <string name="welcome_title"><b>Telegram</b></string>
+    <string name="welcome_subtitle">L\'app di messaggistica più <b>veloce</b> al mondo. \n É <b>gratis</b> e <b>sicura</b>.</string>
+    <string name="welcome_title_icon_desc">Icona telegram</string>
+    <string name="welcome_button">Iniziamo</string>
+</resources>
