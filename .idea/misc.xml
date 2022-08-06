@@ -3,6 +3,13 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/activity_login.xml" value="0.5826359832635983" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/activity_main.xml" value="0.6119246861924686" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/fragment_login_page.xml" value="0.6119246861924686" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/fragment_login_page_view_controller.xml" value="0.6119246861924686" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/fragment_welcome_page.xml" value="0.6119246861924686" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/fragment_welcome_page_view_controller.xml" value="0.6119246861924686" />
+        <entry key="..\:/Progetti/AndroidStudio/TelegramWear/app/src/main/res/layout/welcome_page.xml" value="0.4" />
         <entry key="..\:/Progetti/AndroidStudio/app/src/main/res/layout/activity_main.xml" value="0.5426621160409556" />
       </map>
     </option>

@@ -25,9 +25,9 @@
             android:value="true" />
 
         <activity
-            android:name=".WelcomePageViewController"
+            android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/title_activity_main">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

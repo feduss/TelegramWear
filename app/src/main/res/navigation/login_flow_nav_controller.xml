@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/login_flow_nav_controller"
+    app:startDestination="@id/welcomePageViewController">
+
+    <fragment
+        android:id="@+id/welcomePageViewController"
+        android:name="com.feduss.telegramwear.WelcomePageViewController"
+        android:label="fragment_welcome_page_view_controller"
+        tools:layout="@layout/fragment_welcome_page_view_controller" >
+        <action
+            android:id="@+id/action_welcomePageViewController_to_loginPageViewController2"
+            app:destination="@id/loginPageViewController" />
+    </fragment>
+    <fragment
+        android:id="@+id/loginPageViewController"
+        android:name="com.feduss.telegramwear.LoginPageViewController"
+        android:label="fragment_login_page_view_controller"
+        tools:layout="@layout/fragment_login_page_view_controller" />
+
+</navigation>
