@@ -19,4 +19,7 @@
     values-round/strings.xml for round devices.
     -->
     <string name="hello_world">Hello Square World!</string>
+    <string name="login_number_title">Inserisci il tuo numero di telefono (compreso di prefisso)</string>
+    <string name="login_number_text_field_placeholder">+391234567</string>
+    <string name="login_number_confirm_button">Conferma</string>
 </resources>

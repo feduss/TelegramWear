@@ -11,13 +11,47 @@
         android:label="fragment_welcome_page_view_controller"
         tools:layout="@layout/fragment_welcome_page_view_controller" >
         <action
-            android:id="@+id/action_welcomePageViewController_to_loginPageViewController2"
+            android:id="@+id/goToLoginPage"
             app:destination="@id/loginPageViewController" />
     </fragment>
     <fragment
         android:id="@+id/loginPageViewController"
-        android:name="com.feduss.telegramwear.LoginPageViewController"
+        android:name="com.feduss.telegramwear.LoginViewController"
         android:label="fragment_login_page_view_controller"
-        tools:layout="@layout/fragment_login_page_view_controller" />
+        tools:layout="@layout/fragment_login_page_view_controller" >
+        <action
+            android:id="@+id/goToPhoneNumberPage"
+            app:destination="@id/loginNumberViewController" />
+        <action
+            android:id="@+id/goTo2FAPageFromQRCode"
+            app:destination="@id/login2FAViewController" />
+    </fragment>
+    <fragment
+        android:id="@+id/loginNumberViewController"
+        android:name="com.feduss.telegramwear.LoginNumberViewController"
+        android:label="fragment_login_number"
+        tools:layout="@layout/fragment_login_number_view_controller" >
+        <action
+            android:id="@+id/goToOTPPage"
+            app:destination="@id/loginOTPViewController" />
+    </fragment>
+    <fragment
+        android:id="@+id/login2FAViewController"
+        android:name="com.feduss.telegramwear.Login2FAViewController"
+        android:label="fragment_login_2fa_view_controller"
+        tools:layout="@layout/fragment_login_2fa_view_controller" />
+    <fragment
+        android:id="@+id/loginOTPViewController"
+        android:name="com.feduss.telegramwear.LoginOTPViewController"
+        android:label="fragment_login_otp_view_controller"
+        tools:layout="@layout/fragment_login_otp_view_controller" >
+        <action
+            android:id="@+id/goto2FAPageFromOTP"
+            app:destination="@id/login2FAViewController" />
+        <argument
+            android:name="phoneNumber"
+            app:argType="string"
+            android:defaultValue='""' />
+    </fragment>
 
 </navigation>
