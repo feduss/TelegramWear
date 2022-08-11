@@ -1,4 +1,4 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login.twoFA
 
 import androidx.lifecycle.ViewModel
 

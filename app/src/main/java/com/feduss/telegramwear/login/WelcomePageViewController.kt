@@ -1,4 +1,4 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import androidx.navigation.fragment.findNavController
+import com.feduss.telegramwear.R
 
 
 class WelcomePageViewController : Fragment() {

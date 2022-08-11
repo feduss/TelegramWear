@@ -27,9 +27,8 @@
             android:value="true" />
 
         <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/title_activity_main">
+            android:name=".LoginFlowActivityViewController"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

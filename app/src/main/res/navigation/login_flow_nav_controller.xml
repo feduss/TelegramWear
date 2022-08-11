@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/welcomePageViewController"
-        android:name="com.feduss.telegramwear.WelcomePageViewController"
+        android:name="com.feduss.telegramwear.login.WelcomePageViewController"
         android:label="fragment_welcome_page_view_controller"
         tools:layout="@layout/fragment_welcome_page_view_controller" >
         <action
@@ -16,7 +16,7 @@
     </fragment>
     <fragment
         android:id="@+id/loginPageViewController"
-        android:name="com.feduss.telegramwear.LoginViewController"
+        android:name="com.feduss.telegramwear.login.authType.LoginViewController"
         android:label="fragment_login_page_view_controller"
         tools:layout="@layout/fragment_login_page_view_controller" >
         <action
@@ -25,10 +25,13 @@
         <action
             android:id="@+id/goTo2FAPageFromQRCode"
             app:destination="@id/login2FAViewController" />
+        <action
+            android:id="@+id/goToChatListFromQRCode"
+            app:destination="@id/chatListViewController" />
     </fragment>
     <fragment
         android:id="@+id/loginNumberViewController"
-        android:name="com.feduss.telegramwear.LoginNumberViewController"
+        android:name="com.feduss.telegramwear.login.phoneNumber.LoginPhoneNumberViewController"
         android:label="fragment_login_number"
         tools:layout="@layout/fragment_login_number_view_controller" >
         <action
@@ -37,21 +40,33 @@
     </fragment>
     <fragment
         android:id="@+id/login2FAViewController"
-        android:name="com.feduss.telegramwear.Login2FAViewController"
+        android:name="com.feduss.telegramwear.login.twoFA.Login2FAViewController"
         android:label="fragment_login_2fa_view_controller"
-        tools:layout="@layout/fragment_login_2fa_view_controller" />
+        tools:layout="@layout/fragment_login_2fa_view_controller" >
+        <action
+            android:id="@+id/goToChatListFrom2FA"
+            app:destination="@id/chatListViewController" />
+    </fragment>
     <fragment
         android:id="@+id/loginOTPViewController"
-        android:name="com.feduss.telegramwear.LoginOTPViewController"
+        android:name="com.feduss.telegramwear.login.otp.LoginOTPViewController"
         android:label="fragment_login_otp_view_controller"
         tools:layout="@layout/fragment_login_otp_view_controller" >
         <action
-            android:id="@+id/goto2FAPageFromOTP"
+            android:id="@+id/goTo2FAPageFromOTP"
             app:destination="@id/login2FAViewController" />
         <argument
             android:name="phoneNumber"
             app:argType="string"
             android:defaultValue='""' />
+        <action
+            android:id="@+id/goToChatListFromOTP"
+            app:destination="@id/chatListViewController" />
     </fragment>
+    <fragment
+        android:id="@+id/chatListViewController"
+        android:name="com.feduss.telegramwear.chatlist.ChatListViewController"
+        android:label="fragment_chat_list_view_controller"
+        tools:layout="@layout/fragment_chat_list_view_controller" />
 
 </navigation>

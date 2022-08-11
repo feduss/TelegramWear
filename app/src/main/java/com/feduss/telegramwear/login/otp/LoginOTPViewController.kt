@@ -1,4 +1,4 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login.otp
 
 import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.navArgs
+import com.feduss.telegramwear.R
 
 class LoginOTPViewController : Fragment() {
 
@@ -28,9 +29,9 @@ class LoginOTPViewController : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(this).get(LoginOTPViewModel::class.java)
-        val appDir = requireActivity().getExternalFilesDir(null).toString()
         val phoneNumber = args.phoneNumber
-        viewModel.setClientRepository(appDir, phoneNumber)
+        //TODO: add send otp
+        //viewModel.setClientRepository(appDir, phoneNumber)
     }
 
 }

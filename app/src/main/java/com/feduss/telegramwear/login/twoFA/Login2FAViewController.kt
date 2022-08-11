@@ -1,4 +1,4 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login.twoFA
 
 import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.feduss.telegramwear.R
 
 class Login2FAViewController : Fragment() {
 

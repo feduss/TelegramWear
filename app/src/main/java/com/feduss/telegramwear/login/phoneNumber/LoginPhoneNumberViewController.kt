@@ -1,4 +1,4 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login.phoneNumber
 
 import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
@@ -7,21 +7,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import androidx.core.widget.addTextChangedListener
 import androidx.core.widget.doAfterTextChanged
 import androidx.navigation.fragment.findNavController
+import com.feduss.telegramwear.R
 import com.google.android.material.textfield.TextInputEditText
 
-class LoginNumberViewController : Fragment() {
+class LoginPhoneNumberViewController : Fragment() {
 
     private lateinit var confirmButton: Button
     private lateinit var inputNumberTextField: TextInputEditText
 
     companion object {
-        fun newInstance() = LoginNumberViewController()
+        fun newInstance() = LoginPhoneNumberViewController()
     }
 
-    private lateinit var viewModel: LoginNumberViewModel
+    private lateinit var viewModel: LoginPhoneNumberViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,7 +32,7 @@ class LoginNumberViewController : Fragment() {
         this.confirmButton = view.findViewById(R.id.confirmButton)
         this.confirmButton.isEnabled = false
         this.confirmButton.setOnClickListener {
-            val action = LoginNumberViewControllerDirections.goToOTPPage(this.viewModel.phoneNumber)
+            val action = LoginPhoneNumberViewControllerDirections.goToOTPPage(this.viewModel.phoneNumber)
             findNavController().navigate(action)
         }
 
@@ -47,7 +47,7 @@ class LoginNumberViewController : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        this.viewModel = ViewModelProvider(this)[LoginNumberViewModel::class.java]
+        this.viewModel = ViewModelProvider(this)[LoginPhoneNumberViewModel::class.java]
         this.viewModel.isConfirmButtonEnabled.observe(viewLifecycleOwner) { isEnabled ->
             this.confirmButton.isEnabled = isEnabled
         }

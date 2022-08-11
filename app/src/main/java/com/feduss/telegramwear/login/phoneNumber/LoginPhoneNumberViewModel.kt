@@ -1,10 +1,9 @@
-package com.feduss.telegramwear
+package com.feduss.telegramwear.login.phoneNumber
 
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
-class LoginNumberViewModel : ViewModel() {
+class LoginPhoneNumberViewModel : ViewModel() {
     var phoneNumber = ""
     var isConfirmButtonEnabled = MutableLiveData(false)
 
