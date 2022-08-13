@@ -1,13 +1,13 @@
 package com.feduss.telegramwear.login.phoneNumber
 
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.feduss.telegramwear.R
 import com.google.android.material.textfield.TextInputEditText
@@ -17,11 +17,11 @@ class LoginPhoneNumberViewController : Fragment() {
     private lateinit var confirmButton: Button
     private lateinit var inputNumberTextField: TextInputEditText
 
+    private val viewModel: LoginPhoneNumberViewModel by viewModels()
+
     companion object {
         fun newInstance() = LoginPhoneNumberViewController()
     }
-
-    private lateinit var viewModel: LoginPhoneNumberViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,7 +47,6 @@ class LoginPhoneNumberViewController : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        this.viewModel = ViewModelProvider(this)[LoginPhoneNumberViewModel::class.java]
         this.viewModel.isConfirmButtonEnabled.observe(viewLifecycleOwner) { isEnabled ->
             this.confirmButton.isEnabled = isEnabled
         }

@@ -5,11 +5,6 @@ import org.drinkless.td.libcore.telegram.Client
 import org.drinkless.td.libcore.telegram.TdApi
 
 object ClientRepository {
-    val INSTANCE: ClientRepository
-        get() {
-            return ClientRepository
-        }
-
     internal lateinit var client: Client
 
     init {

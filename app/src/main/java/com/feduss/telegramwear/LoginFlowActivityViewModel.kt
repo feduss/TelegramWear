@@ -1,19 +1,21 @@
 package com.feduss.telegramwear
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import com.feduss.telegramwear.repos.ClientRepository
+import org.drinkless.td.libcore.telegram.Client
 import java.io.File
 
 
-internal class LoginFlowActivityViewModel : ViewModel() {
-    lateinit var clientRepository: ClientRepository
+internal class LoginFlowActivityViewModel(application: Application) :
+    AndroidViewModel(application) {
 
-    fun setClientRepository(appDir: String) {
+    init {
+        val appDir =  application.getExternalFilesDir(null).toString()
         val dir = File(appDir + "TelegramWear/tdlib")
-        if (!dir.exists()) {
+        if (!dir.exists())
             dir.mkdirs()
-        }
-        this.clientRepository = ClientRepository
-        this.clientRepository.setupHandler(appDir)
+        ClientRepository.setupHandler(appDir)
     }
 }

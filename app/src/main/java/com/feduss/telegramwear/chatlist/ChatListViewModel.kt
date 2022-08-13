@@ -1,7 +1,9 @@
 package com.feduss.telegramwear.chatlist
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 
-class ChatListViewModel : ViewModel() {
+class ChatListViewModel(application: Application) :
+    AndroidViewModel(application) {
     // TODO: Implement the ViewModel
 }

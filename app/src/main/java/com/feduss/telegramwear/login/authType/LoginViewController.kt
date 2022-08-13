@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.core.view.isVisible
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.feduss.telegramwear.R
 import com.google.android.material.button.MaterialButton
@@ -22,11 +23,11 @@ class LoginViewController : Fragment() {
     lateinit var loadingBar: ProgressBar
     lateinit var numberButton: MaterialButton
 
+    private val viewModel: LoginViewModel by viewModels()
+
     companion object {
         fun newInstance() = LoginViewController()
     }
-
-    private lateinit var viewModel: LoginViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,7 +49,6 @@ class LoginViewController : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this)[LoginViewModel::class.java]
         viewModel.fetchQrCode()
 
         viewModel.qrCode.observe(viewLifecycleOwner) { qrCodeBitmap ->

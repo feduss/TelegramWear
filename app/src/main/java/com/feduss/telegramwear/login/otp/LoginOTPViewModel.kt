@@ -1,7 +1,8 @@
 package com.feduss.telegramwear.login.otp
 
-import androidx.lifecycle.ViewModel
-import java.io.File
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 
-class LoginOTPViewModel : ViewModel() {
+class LoginOTPViewModel(application: Application) :
+    AndroidViewModel(application) {
 }

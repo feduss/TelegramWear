@@ -1,21 +1,18 @@
 package com.feduss.telegramwear.login.authType
 
-import android.R.attr.bitmap
+import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import com.feduss.telegramwear.repos.ClientRepository
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
-import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
-import java.util.*
 
 
-class LoginViewModel : ViewModel() {
-    var clientRepository = ClientRepository.INSTANCE
+class LoginViewModel(application: Application) :
+    AndroidViewModel(application) {
     var qrCode = MutableLiveData<Bitmap?>(null)
     val qrCodeSize = 100
 

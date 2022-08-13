@@ -1,7 +1,9 @@
 package com.feduss.telegramwear.login.twoFA
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 
-class Login2FAViewModel : ViewModel() {
+class Login2FAViewModel(application: Application) :
+    AndroidViewModel(application) {
     // TODO: Implement the ViewModel
 }
