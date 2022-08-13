@@ -9,6 +9,7 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <application
+        android:name=".TelegramWear"
         android:allowBackup="true"
         android:icon="@drawable/telegram"
         android:label="@string/app_name"

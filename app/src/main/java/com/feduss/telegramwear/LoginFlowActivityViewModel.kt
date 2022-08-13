@@ -10,12 +10,4 @@ import java.io.File
 
 internal class LoginFlowActivityViewModel(application: Application) :
     AndroidViewModel(application) {
-
-    init {
-        val appDir =  application.getExternalFilesDir(null).toString()
-        val dir = File(appDir + "TelegramWear/tdlib")
-        if (!dir.exists())
-            dir.mkdirs()
-        ClientRepository.setupHandler(appDir)
-    }
 }
