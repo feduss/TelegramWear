@@ -22,4 +22,7 @@
     <string name="login_number_title">Inserisci il tuo numero di telefono (compreso di prefisso)</string>
     <string name="login_number_text_field_placeholder">+391234567</string>
     <string name="login_number_confirm_button">Conferma</string>
+    <string name="login_auth_title">Scegli come autenticarti:</string>
+    <string name="login_auth_choice_url">Web url</string>
+    <string name="login_auth_phone_number_or_qr_code">Telefono o QR Code</string>
 </resources>

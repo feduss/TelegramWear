@@ -21,7 +21,7 @@ class WelcomePageViewController : Fragment() {
         val startButton = view.findViewById<Button>(R.id.startButton)
 
         startButton.setOnClickListener {
-            findNavController().navigate(R.id.goToLoginPage)
+            findNavController().navigate(R.id.goToAuthChoicePage)
         }
         return view
     }

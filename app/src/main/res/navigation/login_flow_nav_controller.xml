@@ -11,12 +11,12 @@
         android:label="fragment_welcome_page_view_controller"
         tools:layout="@layout/fragment_welcome_page_view_controller" >
         <action
-            android:id="@+id/goToLoginPage"
-            app:destination="@id/loginPageViewController" />
+            android:id="@+id/goToAuthChoicePage"
+            app:destination="@id/loginAuthChoiceViewController" />
     </fragment>
     <fragment
         android:id="@+id/loginPageViewController"
-        android:name="com.feduss.telegramwear.login.authType.LoginViewController"
+        android:name="com.feduss.telegramwear.login.authType.qrCode.LoginViewController"
         android:label="fragment_login_page_view_controller"
         tools:layout="@layout/fragment_login_page_view_controller" >
         <action
@@ -31,7 +31,7 @@
     </fragment>
     <fragment
         android:id="@+id/loginNumberViewController"
-        android:name="com.feduss.telegramwear.login.phoneNumber.LoginPhoneNumberViewController"
+        android:name="com.feduss.telegramwear.login.authType.phoneNumber.LoginPhoneNumberViewController"
         android:label="fragment_login_number"
         tools:layout="@layout/fragment_login_number_view_controller" >
         <action
@@ -68,5 +68,26 @@
         android:name="com.feduss.telegramwear.chatlist.ChatListViewController"
         android:label="fragment_chat_list_view_controller"
         tools:layout="@layout/fragment_chat_list_view_controller" />
+    <fragment
+        android:id="@+id/loginAuthChoiceViewController"
+        android:name="com.feduss.telegramwear.login.authType.LoginAuthChoiceViewController"
+        android:label="fragment_login_auth_choice_view_controller"
+        tools:layout="@layout/fragment_login_auth_choice_view_controller" >
+        <action
+            android:id="@+id/goToLoginPage"
+            app:destination="@id/loginPageViewController" />
+        <action
+            android:id="@+id/goToLoginUrlPage"
+            app:destination="@id/loginUrlViewController" />
+    </fragment>
+    <fragment
+        android:id="@+id/loginUrlViewController"
+        android:name="com.feduss.telegramwear.login.authType.url.LoginUrlViewController"
+        android:label="fragment_login_url_view_controller"
+        tools:layout="@layout/fragment_login_url_view_controller" >
+        <action
+            android:id="@+id/goToChatListFromUrl"
+            app:destination="@id/chatListViewController" />
+    </fragment>
 
 </navigation>

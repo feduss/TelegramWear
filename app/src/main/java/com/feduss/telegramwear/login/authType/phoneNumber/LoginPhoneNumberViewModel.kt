@@ -1,4 +1,4 @@
-package com.feduss.telegramwear.login.phoneNumber
+package com.feduss.telegramwear.login.authType.phoneNumber
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

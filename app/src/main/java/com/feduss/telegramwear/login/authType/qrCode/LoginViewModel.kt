@@ -1,4 +1,4 @@
-package com.feduss.telegramwear.login.authType
+package com.feduss.telegramwear.login.authType.qrCode
 
 import android.app.Application
 import android.graphics.Bitmap

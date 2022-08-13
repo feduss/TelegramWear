@@ -1,7 +1,6 @@
-package com.feduss.telegramwear.login.authType
+package com.feduss.telegramwear.login.authType.qrCode
 
 import android.graphics.Color
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater

@@ -1,4 +1,4 @@
-package com.feduss.telegramwear.login.phoneNumber
+package com.feduss.telegramwear.login.authType.phoneNumber
 
 import android.os.Bundle
 import android.view.LayoutInflater
