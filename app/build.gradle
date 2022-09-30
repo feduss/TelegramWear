@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    compileSdk 32
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.feduss.telegramwear"
         minSdk 30
-        targetSdk 32
+        targetSdk 33
         versionCode 1
         versionName "0.1a"
         ndk {
@@ -33,13 +33,14 @@ android {
     buildFeatures {
         viewBinding true
     }
+    namespace 'com.feduss.telegramwear'
 }
 
 dependencies {
 
-    implementation 'androidx.core:core-ktx:1.8.0'
-    implementation("androidx.fragment:fragment-ktx:1.5.2")
-    implementation 'com.google.android.gms:play-services-wearable:17.1.0'
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation("androidx.fragment:fragment-ktx:1.5.3")
+    implementation 'com.google.android.gms:play-services-wearable:18.0.0'
     implementation 'androidx.percentlayout:percentlayout:1.0.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
@@ -47,10 +48,27 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.constraintlayout:constraintlayout-compose:1.0.1'
     implementation 'com.google.android.material:material:1.6.1'
-    implementation 'androidx.appcompat:appcompat:1.5.0'
-    implementation 'androidx.navigation:navigation-fragment:2.5.1'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'androidx.navigation:navigation-fragment:2.5.2'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
-    implementation 'com.google.zxing:core:3.4.1'
+    implementation 'com.google.zxing:core:3.5.0'
+
+    /*** COMPOSE ***/
+
+    implementation("androidx.compose.ui:ui:1.2.1")
+    // Tooling support (Previews, etc.)
+    implementation("androidx.compose.ui:ui-tooling:1.2.1")
+    // Foundation (Border, Background, Box, Image, Scroll, shapes, animations, etc.)
+    implementation("androidx.compose.foundation:foundation:1.2.1")
+    // Material Design
+    implementation("androidx.compose.material:material:1.2.1")
+    // Material design icons
+    implementation("androidx.compose.material:material-icons-core:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.2.1")
+    // Integration with observables
+    implementation("androidx.compose.runtime:runtime-livedata:1.2.1")
+    implementation("androidx.compose.runtime:runtime-rxjava2:1.2.1")
+
 
 }

@@ -10,7 +10,6 @@
     <string name="welcome_button">Iniziamo</string>
     <string name="login_qr_code_image_descriptipn">QR Code</string>
     <string name="login_qr_code_info">Scannerizza il <b>QR Code</b> dal tuo telefono</string>
-    <string name="login_phone_number_button">Oppure inserisci il tuo <b>numero di telefono</b></string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_main">MainActivity</string>
@@ -24,5 +23,14 @@
     <string name="login_number_confirm_button">Conferma</string>
     <string name="login_auth_title">Scegli come autenticarti:</string>
     <string name="login_auth_choice_url">Web url</string>
-    <string name="login_auth_phone_number_or_qr_code">Telefono o QR Code</string>
+    <string name="login_auth_qrcode">QR Code</string>
+    <string name="login_auth_phone_number">Numero di telefono</string>
+    <string name="login_otp_confirm_button">Conferma</string>
+    <string name="login_otp_title">Inserisci il codice ricevuto su Telegram (su un altro dispositivo già connesso)</string>
+    <string name="login_otp_placeholder">1234567</string>
+    <string name="login_otp_wrong_code">OTP errato</string>
+    <string name="login_2fa_title">Inserisci la password utilizzata per l\'autenticazione a due fattori</string>
+    <string name="login_2fa_placeholder">1234567</string>
+    <string name="login_2fa_wrong_code">Password errata</string>
+    <string name="login_2fa_confirm_button">Conferma</string>
 </resources>

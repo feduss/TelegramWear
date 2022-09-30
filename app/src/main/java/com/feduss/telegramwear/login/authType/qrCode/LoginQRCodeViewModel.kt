@@ -11,7 +11,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 
 
-class LoginViewModel(application: Application) :
+class LoginQRCodeViewModel(application: Application) :
     AndroidViewModel(application) {
     var qrCode = MutableLiveData<Bitmap?>(null)
     val qrCodeSize = 100

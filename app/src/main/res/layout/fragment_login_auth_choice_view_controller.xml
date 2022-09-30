@@ -35,13 +35,28 @@ tools:context=".login.authType.LoginAuthChoiceViewController">
         android:layout_marginBottom="0dp"
         style = "@style/Button.Primary"
         app:layout_constraintTop_toBottomOf="@id/authTitle"
-        app:layout_constraintBottom_toTopOf="@+id/authOtherButton"/>
+        app:layout_constraintBottom_toTopOf="@+id/authQRCodeButton"/>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/authOtherButton"
+        android:id="@+id/authQRCodeButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/login_auth_phone_number_or_qr_code"
+        android:text="@string/login_auth_qrcode"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="0dp"
+        style = "@style/Button.Primary"
+        app:layout_constraintTop_toBottomOf="@id/authUrlButton"
+        app:layout_constraintBottom_toTopOf="@+id/authPhoneNumberButton"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/authPhoneNumberButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/login_auth_phone_number"
         android:textSize="14sp"
         android:textAlignment="center"
         android:layout_marginTop="8dp"
@@ -49,8 +64,8 @@ tools:context=".login.authType.LoginAuthChoiceViewController">
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="32dp"
         style = "@style/Button.Primary"
-        app:layout_constraintTop_toBottomOf="@id/authUrlButton"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/authQRCodeButton" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

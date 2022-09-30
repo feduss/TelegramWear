@@ -11,9 +11,10 @@
 
         <TextView
             android:id="@+id/loginNumberTitle"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
+            android:layout_marginBottom="0dp"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             android:text="@string/login_number_title"
@@ -26,7 +27,7 @@
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/loginNumberValue"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
@@ -36,9 +37,25 @@
             android:textSize="14sp"
             android:inputType="phone"
             app:layout_constraintTop_toBottomOf="@+id/loginNumberTitle"
-            app:layout_constraintBottom_toTopOf="@+id/confirmButton"
+            app:layout_constraintBottom_toTopOf="@+id/errorLabel"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/errorLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:textAlignment="center"
+            android:textColor="#FF0000"
+            android:textSize="14sp"
+            app:layout_constraintTop_toBottomOf="@+id/loginNumberValue"
+            app:layout_constraintBottom_toTopOf="@+id/confirmButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/confirmButton"
@@ -50,7 +67,22 @@
             android:layout_marginBottom="8dp"
             android:text="@string/login_number_confirm_button"
             style="@style/Button.Primary"
-            app:layout_constraintTop_toBottomOf="@id/loginNumberValue"
+            app:layout_constraintTop_toBottomOf="@id/errorLabel"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progressIndicator"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            app:layout_constraintTop_toBottomOf="@id/errorLabel"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />

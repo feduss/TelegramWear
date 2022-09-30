@@ -1,6 +1,5 @@
 package com.feduss.telegramwear.login.authType
 
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -14,7 +13,9 @@ import com.google.android.material.button.MaterialButton
 class LoginAuthChoiceViewController : Fragment() {
 
     private lateinit var authUrlButton: MaterialButton
-    private lateinit var authOtherButton: MaterialButton
+    private lateinit var authQRCodeButton: MaterialButton
+    private lateinit var authPhoneNumberButton: MaterialButton
+
 
     private val viewModel: LoginAuthChoiceViewModel by viewModels()
 
@@ -34,14 +35,19 @@ class LoginAuthChoiceViewController : Fragment() {
             false)
 
         this.authUrlButton = view.findViewById(R.id.authUrlButton)
-        this.authOtherButton = view.findViewById(R.id.authOtherButton)
+        this.authQRCodeButton = view.findViewById(R.id.authQRCodeButton)
+        this.authPhoneNumberButton = view.findViewById(R.id.authPhoneNumberButton)
 
         this.authUrlButton.setOnClickListener {
             findNavController().navigate(R.id.goToLoginUrlPage)
         }
 
-        this.authOtherButton.setOnClickListener {
-            findNavController().navigate(R.id.goToLoginPage)
+        this.authQRCodeButton.setOnClickListener {
+            findNavController().navigate(R.id.goToLoginQRCodePage)
+        }
+
+        this.authPhoneNumberButton.setOnClickListener {
+            findNavController().navigate(R.id.goToLoginPhoneNumberPage)
         }
 
         return view

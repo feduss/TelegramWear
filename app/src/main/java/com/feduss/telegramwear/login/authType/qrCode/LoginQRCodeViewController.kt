@@ -15,33 +15,27 @@ import androidx.navigation.fragment.findNavController
 import com.feduss.telegramwear.R
 import com.google.android.material.button.MaterialButton
 
-class LoginViewController : Fragment() {
+class LoginQRCodeViewController : Fragment() {
 
     lateinit var qrCodeContainer: FrameLayout
     lateinit var qrCodeImage: ImageView
     lateinit var loadingBar: ProgressBar
-    lateinit var numberButton: MaterialButton
 
-    private val viewModel: LoginViewModel by viewModels()
+    private val viewModel: LoginQRCodeViewModel by viewModels()
 
     companion object {
-        fun newInstance() = LoginViewController()
+        fun newInstance() = LoginQRCodeViewController()
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_login_page_view_controller, container, false)
+        val view = inflater.inflate(R.layout.fragment_login_qrcode_view_controller, container, false)
 
         this.qrCodeContainer = view.findViewById(R.id.qrcodeContainer)
         this.qrCodeImage = view.findViewById(R.id.qrCodeImage)
         this.loadingBar = view.findViewById(R.id.qrCodeLoadingBar)
-        this.numberButton = view.findViewById(R.id.numberButton)
-
-        this.numberButton.setOnClickListener {
-            findNavController().navigate(R.id.goToPhoneNumberPage)
-        }
 
         return view
     }
