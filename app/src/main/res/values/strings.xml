@@ -22,15 +22,20 @@
     <string name="login_number_text_field_placeholder">+391234567</string>
     <string name="login_number_confirm_button">Conferma</string>
     <string name="login_auth_title">Scegli come autenticarti:</string>
-    <string name="login_auth_choice_url">Web url</string>
     <string name="login_auth_qrcode">QR Code</string>
     <string name="login_auth_phone_number">Numero di telefono</string>
     <string name="login_otp_confirm_button">Conferma</string>
     <string name="login_otp_title">Inserisci il codice ricevuto su Telegram (su un altro dispositivo già connesso)</string>
     <string name="login_otp_placeholder">1234567</string>
     <string name="login_otp_wrong_code">OTP errato</string>
-    <string name="login_2fa_title">Inserisci la password utilizzata per l\'autenticazione a due fattori</string>
+    <string name="login_2fa_title">Inserisci la password per la 2FA</string>
     <string name="login_2fa_placeholder">1234567</string>
     <string name="login_2fa_wrong_code">Password errata</string>
     <string name="login_2fa_confirm_button">Conferma</string>
+    <string name="login_auth_phone_number_otp_sent_failed">Si è verificato un problema durante l\'invio del codice otp</string>
+    <string name="login_2fa_errror">Si è verificato un problema o la password è errata</string>
+    <string name="login_auth_qr_code_info">Scannerizza il qr code dall\'app telegram sul tuo smartphone.</string>
+    <string name="login_auth_phone_url_tap_here">Clicca qui</string>
+    <string name="login_auth_phone_url_title">Login link:</string>
+    <string name="login_auth_phone_url_error">Si è verificato un errore, riprova più tardi.</string>
 </resources>

@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <resources>
-
-    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.App.Main" parent="@android:style/Theme.DeviceDefault">
     </style>
 
-    <style name="Button.Primary" parent="Widget.MaterialComponents.Button">
-        <item name="cornerRadius">@dimen/button_corner_radius</item>
-        <item name="iconTint">@color/button_primary_enable_disable_state</item>
-        <item name="android:textColor">@color/button_primary_enable_disable_state</item>
-        <item name="backgroundTint">#2ca5e0</item>
-    </style>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background, animated icon, and animation duration. -->
+        <item name="windowSplashScreenBackground">@android:color/black</item>
 
-    <style name="Button.Bordered" parent="Widget.MaterialComponents.Button">
-        <item name="android:textColor">#2ca5e0</item>
-        <item name="backgroundTint">#00000000</item>
-    </style>
+        <!-- Use windowSplashScreenAnimatedIcon to add either a drawable or an
+             animated drawable. One of these is required. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_background</item>
+        <!-- Required for animated icons -->
+        <item name="windowSplashScreenAnimationDuration">2000</item>
 
-    <dimen name="button_corner_radius">16dp</dimen>
+        <!-- Set the theme of the Activity that directly follows your splash screen. -->
+        <!-- Required -->
+        <item name="postSplashScreenTheme">@style/Theme.App.Main</item>
+    </style>
 </resources>

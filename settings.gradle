@@ -15,3 +15,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = "TelegramWear"
 include ':app'
+include ':data'
+include ':business'
+include ':entity'
+include ':utils'

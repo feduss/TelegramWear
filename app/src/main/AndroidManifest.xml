@@ -8,12 +8,12 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <application
-        android:name=".TelegramWear"
+        android:name=".TelegramWearApplication"
         android:allowBackup="true"
-        android:icon="@drawable/telegram"
+        android:icon="@drawable/ic_splashscreen_background"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/Theme.App.Main">
         <uses-library
             android:name="com.google.android.wearable"
             android:required="true" />
@@ -27,7 +27,7 @@
             android:value="true" />
 
         <activity
-            android:name=".LoginFlowActivityViewController"
+            android:name=".view.login.MainActivityViewController"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
