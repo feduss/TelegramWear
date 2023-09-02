@@ -5,45 +5,46 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusRequester.Companion.createRefs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.wear.compose.material.Card
 import androidx.wear.compose.material.CardDefaults
-import androidx.wear.compose.material.Icon
-import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import com.feduss.telegram.entity.model.ChatItemModel
 import com.feduss.telegramwear.R
 import com.feduss.telegramwear.colors.AppColors
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatItem(
-    image: Bitmap,
-    personName: String,
-    lastMessageImage: Bitmap?,
-    lastMessage: String,
+    model: ChatItemModel,
     cardTintColor: Color = Color.Black,
     onCardClick: () -> Unit = {}
 ) {
@@ -62,50 +63,139 @@ fun ChatItem(
                 .height(32.dp)
                 .background(cardTintColor, RoundedCornerShape(16.dp)),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
         ) {
 
-            Image(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape),
-                bitmap = image.asImageBitmap(),
-                contentDescription = "${personName} profile picture"
-            )
+            val titleColor =
+                if (model.unreadMessagesCount == 0 || model.isMuted) {
+                    Color.White
+                } else {
+                    AppColors.TelegramBlue.toColor()
+                }
+
+            val unreadMessagesCountColor =
+                if (model.unreadMessagesCount == 0) {
+                    Color.White
+                } else if (model.isMuted) {
+                    Color.Gray
+                } else {
+                    AppColors.TelegramBlue.toColor()
+                }
+
+
+            ConstraintLayout {
+                val (profilePhoto, iconPin) = createRefs()
+                Image(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .constrainAs(profilePhoto) {
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                        },
+                    bitmap = model.image.asImageBitmap(),
+                    contentDescription = "${model.personName} profile picture"
+                )
+
+                if (model.isPinned) {
+                    Image(
+                        modifier = Modifier
+                            .height(8.dp)
+                            .constrainAs(iconPin) {
+                                absoluteRight.linkTo(profilePhoto.absoluteRight, margin = (-4).dp)
+                                bottom.linkTo(profilePhoto.bottom)
+                            }
+                        ,
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_pin),
+                        contentDescription = "ic_pin"
+                    )
+                }
+            }
 
             Column(
                 verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.Start
             ) {
-                Text(
-                    maxLines = 1,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    text = personName,
-                    fontSize = TextUnit(12f, TextUnitType.Sp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start)
+                ) {
+                    Text(
+                        maxLines = 1,
+                        modifier = Modifier
+                            .weight(1f)
+                            .basicMarquee(),
+                        text = model.personName,
+                        fontSize = TextUnit(12f, TextUnitType.Sp),
+                        color = titleColor
+                    )
+
+                    Text(
+                        modifier = Modifier.width(IntrinsicSize.Max),
+                        maxLines = 1,
+                        text = model.lastMessageDate,
+                        color = titleColor,
+                        fontSize = TextUnit(8f, TextUnitType.Sp),
+                        textAlign = TextAlign.End
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+
+                    val lastMessageImage = model.lastMessageImage
                     if (lastMessageImage != null) {
                         Image(
                             modifier = Modifier
-                                .fillMaxHeight()
-                                .basicMarquee(),
+                                .fillMaxHeight(),
                             bitmap = lastMessageImage.asImageBitmap(),
                             contentDescription = "file thumbnail"
                         )
                     }
+
                     Text(
                         maxLines = 1,
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .basicMarquee(),
-                        text = lastMessage,
+                        text = model.lastMessage,
                         fontSize = TextUnit(10f, TextUnitType.Sp),
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    if (model.isMuted) {
+                        Image(
+                            modifier = Modifier.width(8.dp),
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_volume_mute),
+                            contentDescription = "ic_volume_mute"
+                        )
+                    }
+
+                    if (model.unreadMessagesCount > 0) {
+                        val unreadMessagesCountStr: String =
+                            if (model.unreadMessagesCount > 99) {
+                                "99+"
+                            } else {
+                                model.unreadMessagesCount.toString()
+                            }
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(unreadMessagesCountColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = unreadMessagesCountStr,
+                                textAlign = TextAlign.Center,
+                                color = Color.White,
+                                fontSize = TextUnit(6f, TextUnitType.Sp)
+                            )
+                        }
+                    }
                 }
             }
         }

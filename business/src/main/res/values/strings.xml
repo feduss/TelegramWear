@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="last_message_date_less_than_minute"><![CDATA[< 1 minuto]]></string>
+    <string name="last_message_date_one_minute">1 minuto</string>
+    <string name="last_message_date_n_minutes">%1$s minuti</string>
+    <string name="last_message_date_one_hour">1 ora</string>
+    <string name="last_message_date_n_hours">%1$s ore</string>
+    <string name="last_message_date_one_day">1 giorno</string>
+    <string name="last_message_date_n_days">%1$s giorni</string>
+</resources>

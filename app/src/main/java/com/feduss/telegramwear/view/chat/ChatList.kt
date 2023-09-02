@@ -48,8 +48,6 @@ fun ChatList(
         }
     }
 
-
-
     ScalingLazyColumn(
         modifier = Modifier
             .fillMaxWidth()
@@ -65,10 +63,7 @@ fun ChatList(
         } else {
             items(chatItems.value.toList()) {
                 ChatItem(
-                    image = it.image,
-                    personName = it.personName,
-                    lastMessageImage = it.lastMessageImage,
-                    lastMessage = it.lastMessage,
+                    model = it,
                     onCardClick = {
 
                     }

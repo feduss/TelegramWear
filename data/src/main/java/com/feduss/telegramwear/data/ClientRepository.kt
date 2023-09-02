@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flow
 import org.drinkless.td.libcore.telegram.Client
 import org.drinkless.td.libcore.telegram.TdApi
 import java.io.File
+import java.util.Collections
 import javax.inject.Inject
 
 
@@ -23,7 +24,7 @@ interface ClientRepository {
     fun requestQrCode(): Flow<String?>
     fun checkPassword(password: String): Flow<Boolean>
     fun getStatus(): LiveData<Int>
-    fun getMainChat(limit: Int): Flow<LoadChatResponse>
+    fun retrieveChats(limit: Int): Flow<LoadChatResponse>
 }
 
 class ClientRepositoryImpl @Inject constructor(
@@ -31,6 +32,9 @@ class ClientRepositoryImpl @Inject constructor(
 ): ClientRepository {
     internal lateinit var client: Client
     internal var status: MutableLiveData<Int> = MutableLiveData(-1)
+
+    var chats: MutableList<TdApi.Chat> = Collections.synchronizedList(ArrayList<TdApi.Chat>());
+    var chatIds = ArrayList<Long>()
 
     init {
         val appDir = context.getExternalFilesDir(null).toString()
@@ -47,6 +51,7 @@ class ClientRepositoryImpl @Inject constructor(
         client = Client.create({ tdApiObject ->
             val authState = (tdApiObject as TdApi.UpdateAuthorizationState).authorizationState
             status.postValue(authState.constructor)
+
             if (authState.constructor == TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR) {
                 Log.i("Ok", "Client created")
                 setTdLibParams(appDir)
@@ -183,51 +188,102 @@ class ClientRepositoryImpl @Inject constructor(
     }
 
     //TODO: to complete
-    override fun getMainChat(limit: Int) = flow {
-        val completionDeferred = CompletableDeferred<LoadChatResponse>()
+    override fun retrieveChats(limit: Int) = flow {
+        val completionDeffered = CompletableDeferred<LoadChatResponse>()
 
-        client.send(TdApi.GetChats(TdApi.ChatListMain(), limit)) { tdApiObject ->
-            if(tdApiObject.constructor == TdApi.Error.CONSTRUCTOR) {
+        downloadChats(
+            TdApi.ChatListMain(),
+            limit,
+            completionDeffered
+        )
+
+        emit(completionDeffered.await())
+    }
+
+    private fun downloadChats(
+        chatList: TdApi.ChatList,
+        limit: Int,
+        completionDeferred: CompletableDeferred<LoadChatResponse>
+    ) {
+        client.send(TdApi.GetChats(chatList, limit)) { tdApiObject ->
+            if (tdApiObject.constructor == TdApi.Error.CONSTRUCTOR) {
                 if (tdApiObject is TdApi.Error && tdApiObject.code == 404) {
                     completionDeferred.complete(LoadChatResponse.NoMoreChat)
                 } else {
                     completionDeferred.complete(LoadChatResponse.LoadingError)
                 }
+            } else if (tdApiObject is TdApi.Chats) {
+                chatIds.addAll(tdApiObject.chatIds.asList())
+                tdApiObject.chatIds.forEachIndexed { index, chatId ->
+                    downloadChatById(
+                        chatId,
+                        chatNumber = tdApiObject.chatIds.size,
+                        completionDeferred,
+                        index = index
+                    )
+                }
             }
-            else if (tdApiObject is TdApi.Chats) {
-                var chats = ArrayList<TdApi.Chat>()
-                tdApiObject.chatIds.forEach { chatId ->
-                    //Download chat by id
-                    client.send(TdApi.GetChat(chatId)) { chatObject ->
-                        if (chatObject is TdApi.Chat) {
+        }
+    }
 
-                            //Download profile photo of user by its id
-                            chatObject.photo?.small?.id?.let {
-                                client.send(
-                                    TdApi.DownloadFile(
-                                        it,
-                                        32,
-                                        0,
-                                        0,
-                                        false
-                                    )
-                                ) { fileObject ->
+    private fun downloadChatById(
+        chatId: Long,
+        chatNumber: Int,
+        completionDeferred: CompletableDeferred<LoadChatResponse>,
+        index: Int
+    )  {
+        client.send(TdApi.GetChat(chatId)) { chatObject ->
+            if (chatObject is TdApi.Chat) {
+                downloadProfilePhoto(
+                    chatObject,
+                    chatNumber,
+                    completionDeferred,
+                    index = index
+                )
+            } else {
+                Log.e("Test123 -> ", "error index ${index}: ${chatObject}")
+            }
+        }
+    }
 
-                                    if (fileObject is TdApi.File) {
-                                        ///Add photo in chat object
-                                        TdApi.UpdateFile(fileObject)
+    private fun downloadProfilePhoto(
+        chatObject: TdApi.Chat,
+        chatNumber: Int,
+        completionDeferred: CompletableDeferred<LoadChatResponse>,
+        index: Int
+    ) {
+        synchronized(chats) {
+            val photoId = chatObject.photo?.small?.id
+            if (photoId == null) {
+                chats.add(chatObject)
 
-                                        //
-                                        chats.add(chatObject)
-                                        completionDeferred.complete(LoadChatResponse.ChatList(chats))
-                                    }
-                                }
-                            }
+                if (chats.size == chatNumber) {
+                    completionDeferred.complete(LoadChatResponse.ChatList(ArrayList(chats), chatIds))
+                }
+            } else {
+                client.send(
+                    TdApi.DownloadFile(
+                        photoId,
+                        32,
+                        0,
+                        0,
+                        false
+                    )
+                ) { fileObject ->
+                    if (fileObject is TdApi.File) {
+                        ///Add photo in chat object
+                        TdApi.UpdateFile(fileObject)
+
+                        chats.add(chatObject)
+
+                        if (chats.size == chatNumber) {
+                            completionDeferred.complete(LoadChatResponse.ChatList(ArrayList(chats), chatIds))
                         }
+                    } else {
+                        Log.e("buglog -> ", "error index ${index}: ${chatObject}")
                     }
                 }
             }
         }
-        emit(completionDeferred.await())
     }
 }

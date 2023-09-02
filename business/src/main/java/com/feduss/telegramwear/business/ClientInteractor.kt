@@ -1,9 +1,7 @@
 package com.feduss.telegramwear.business
 
-import android.R.attr.text
-import android.R.attr.x
-import android.R.attr.y
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -21,9 +19,16 @@ import com.feduss.telegramwear.data.ClientRepository
 import com.feduss.telegramwear.data.response.LoadChatResponse
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import org.drinkless.td.libcore.telegram.TdApi
+import java.time.Duration
+import java.time.Instant
+import java.time.Instant.now
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 
@@ -33,7 +38,7 @@ interface ClientInteractor {
     suspend fun retrieveQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getStatus(): LiveData<AuthStatus>
-    fun getMainChat(context: Context, limit: Int): Flow<LoadChatResult>
+    fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult>
 }
 
 class ClientInteractorImpl @Inject constructor(
@@ -85,98 +90,157 @@ class ClientInteractorImpl @Inject constructor(
 
     }
 
-    //TODO: to test
-    override fun getMainChat(context: Context, limit: Int) = flow {
-        val completionDeferred = CompletableDeferred<LoadChatResult>()
-        clientRepository.getMainChat(limit).collect() { result ->
-            when(result) {
-                is LoadChatResponse.ChatList -> {
+    // TODO: temp impl
+    override fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult> {
 
-                    val resultChats = result.chats.mapNotNull {chat ->
+        return clientRepository.retrieveChats(limit).flatMapMerge { result ->
+            flow {
+                when(result) {
+                    is LoadChatResponse.ChatList -> {
 
-                        val personName = chat.title ?: "No name"
+                        val orderById = result.ids.withIndex().associate { (index, it) -> it to index }
+                        val sortedRawChats = result.chats.sortedBy { orderById[it.id] }
 
-                        //TODO: wrong photo
-                        val photoData = chat.photo?.small?.local?.path
-                        var image = BitmapFactory.decodeFile(photoData)
+                        val resultChats = sortedRawChats.mapNotNull {chat ->
 
-                        if(image == null) {
-                            image = getDefaultImageWithText(context, personName)
+                            val personName = chat.title ?: "No name"
+
+                            val image = getProfilePhoto(chat, personName)
+
+                            val (lastMessageImage: Bitmap?, lastMessage) = getLastMessage(chat, context)
+
+                            val lastMessageDate: String = getLastMessageDate(
+                                chat,
+                                context
+                            )
+
+
+                            val isPinned = chat.positions.count { it.isPinned } != 0
+                            val isMuted = chat.notificationSettings.muteFor != 0
+                            val unreadMessagesCount = chat.unreadCount
+
+                            val chatItemModel = ChatItemModel(
+                                image = image,
+                                personName = personName.trim(),
+                                lastMessageImage = lastMessageImage,
+                                lastMessage = lastMessage.trim(),
+                                lastMessageDate = lastMessageDate,
+                                unreadMessagesCount = unreadMessagesCount,
+                                isPinned = isPinned,
+                                isMuted = isMuted
+                            )
+
+                            chatItemModel
                         }
 
-                        var lastMessageImage: Bitmap? = null
-                        var lastMessage = ""
-
-                        val chatContent = chat.lastMessage?.content
-
-                        when(chatContent) {
-                            is TdApi.MessageText -> {
-                                lastMessage = chatContent.text.text
-                            }
-
-                            is TdApi.MessageDocument -> {
-                                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_file)
-                                lastMessage = chatContent.document.fileName
-                            }
-
-                            is TdApi.MessagePhoto -> {
-                                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_photo)
-                                lastMessage = "Foto"
-                            }
-
-                            is TdApi.MessageVideo -> {
-                                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_video)
-                                lastMessage = "Video"
-                            }
-
-                            is TdApi.MessageVoiceNote -> {
-                                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_music)
-                                lastMessage = "Audio"
-                            }
-
-                            is TdApi.MessageAnimation -> {
-                                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_gif)
-                                lastMessage = "GIF"
-                            }
-
-                            is TdApi.MessageSticker -> {
-                                val stickerEmoji = chatContent.sticker.emoji
-                                lastMessage = "${stickerEmoji} Sticker"
-                            }
-
-                            else -> {
-                                lastMessage = "Messaggio non supportato"
-                            }
-
-                        }
-
-                        val chatItemModel = ChatItemModel(
-                            image = image,
-                            personName = personName,
-                            lastMessageImage = lastMessageImage,
-                            lastMessage = lastMessage,
-                        )
-
-                        chatItemModel
+                        emit(LoadChatResult.ChatList(resultChats))
                     }
 
-                    completionDeferred.complete(LoadChatResult.ChatList(resultChats))
-                }
+                    is LoadChatResponse.NoMoreChat -> {
+                        emit(LoadChatResult.NoMoreChat)
+                    }
 
-                is LoadChatResponse.NoMoreChat -> {
-                    completionDeferred.complete(LoadChatResult.NoMoreChat)
-                }
-
-                is LoadChatResponse.LoadingError -> {
-                    completionDeferred.complete(LoadChatResult.LoadingError)
+                    else -> { emit(LoadChatResult.LoadingError) }
                 }
             }
         }
-
-        emit(completionDeferred.await())
     }
 
-    private fun getDefaultImageWithText(context: Context, personName: String): Bitmap {
+    private fun getProfilePhoto(chat: TdApi.Chat, personName: String): Bitmap {
+        val photoData = chat.photo?.small?.local?.path
+        var image = BitmapFactory.decodeFile(photoData)
+
+        if (image == null) {
+            image = getDefaultImageWithText(personName)
+        }
+        return image
+    }
+
+    private fun getLastMessage(chat: TdApi.Chat,context: Context): Pair<Bitmap?, String> {
+        var lastMessageImage: Bitmap? = null
+        var lastMessage = ""
+
+        val chatContent = chat.lastMessage?.content
+
+        when (chatContent) {
+            is TdApi.MessageText -> {
+                lastMessage = chatContent.text.text
+            }
+
+            is TdApi.MessageDocument -> {
+                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_file)
+                lastMessage = chatContent.document.fileName
+            }
+
+            is TdApi.MessagePhoto -> {
+                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_photo)
+                lastMessage = "Foto"
+            }
+
+            is TdApi.MessageVideo -> {
+                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_video)
+                lastMessage = "Video"
+            }
+
+            is TdApi.MessageVoiceNote -> {
+                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_music)
+                lastMessage = "Audio"
+            }
+
+            is TdApi.MessageAnimation -> {
+                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_gif)
+                lastMessage = "GIF"
+            }
+
+            is TdApi.MessageSticker -> {
+                val stickerEmoji = chatContent.sticker.emoji
+                lastMessage = "${stickerEmoji} Sticker"
+            }
+
+            is TdApi.MessageAnimatedEmoji -> {
+                val stickerEmoji = chatContent.emoji
+                lastMessage = "${stickerEmoji} Sticker"
+            }
+
+            else -> {
+                lastMessage = "Messaggio non supportato"
+            }
+
+        }
+        return Pair(lastMessageImage, lastMessage)
+    }
+
+    private fun getLastMessageDate(chat: TdApi.Chat, context: Context): String {
+        val rawLastMessageDate = Instant.ofEpochSecond(
+            chat.lastMessage?.date?.toLong() ?: 0L
+        )
+
+        val now = now()
+
+        val diff: Duration = Duration.between(
+            rawLastMessageDate,
+            now()
+        )
+
+        val lastMessaDate: String = if (diff.toMinutes() < 1L) {
+            context.getString(R.string.last_message_date_less_than_minute)
+        } else if (diff.toMinutes() == 1L) {
+            context.getString(R.string.last_message_date_one_minute)
+        } else if (diff.toMinutes() < 60L) {
+            context.getString(R.string.last_message_date_n_minutes, diff.toMinutes().toString())
+        } else if (diff.toHours() == 1L) {
+            context.getString(R.string.last_message_date_one_hour)
+        } else if (diff.toHours() < 24L) {
+            context.getString(R.string.last_message_date_n_hours, diff.toHours().toString())
+        } else if (diff.toDays() == 1L) {
+            context.getString(R.string.last_message_date_one_day)
+        } else {
+            context.getString(R.string.last_message_date_n_days, diff.toDays().toString())
+        }
+        return lastMessaDate
+    }
+
+    private fun getDefaultImageWithText(personName: String): Bitmap {
 
         val colors = listOf(
             Color.Red,

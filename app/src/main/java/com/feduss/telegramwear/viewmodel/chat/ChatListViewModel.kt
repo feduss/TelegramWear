@@ -1,10 +1,6 @@
 package com.feduss.telegramwear.viewmodel.chat
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import com.feduss.telegram.entity.model.ChatItemModel
 import com.feduss.telegramwear.business.ClientInteractor
@@ -38,7 +34,7 @@ class ChatListViewModel @Inject constructor(
         _isChatLoadingFailed.value = null
         _noMoreChat.value = null
 
-        clientInteractor.getMainChat(context = context, limit = 5).collectLatest {
+        clientInteractor.retrieveChats(context = context, limit = 100).collect() {
             when (it) {
                 is LoadChatResult.ChatList -> {
                     _chatItems.value = it.chats
