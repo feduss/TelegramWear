@@ -27,7 +27,7 @@
             android:value="true" />
 
         <activity
-            android:name=".view.login.MainActivityViewController"
+            android:name=".view.MainActivityViewController"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

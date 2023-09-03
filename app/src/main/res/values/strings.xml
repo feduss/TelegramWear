@@ -38,4 +38,5 @@
     <string name="login_auth_phone_url_tap_here">Clicca qui</string>
     <string name="login_auth_phone_url_title">Login link:</string>
     <string name="login_auth_phone_url_error">Si è verificato un errore, riprova più tardi.</string>
+    <string name="chat_list_load_more">Carica altro</string>
 </resources>

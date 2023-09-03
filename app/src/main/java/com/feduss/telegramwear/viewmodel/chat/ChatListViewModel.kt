@@ -8,7 +8,6 @@ import com.feduss.telegramwear.business.result.LoadChatResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
 
@@ -26,18 +25,36 @@ class ChatListViewModel @Inject constructor(
     private val _noMoreChat = MutableStateFlow<Boolean?>(null)
     var noMoreChat = _noMoreChat.asStateFlow()
 
-    private val _chatItems = MutableStateFlow<List<ChatItemModel>>(listOf())
+    private val _chatItems = MutableStateFlow<ArrayList<ChatItemModel>>(
+        ArrayList()
+    )
+
     var chatItems = _chatItems.asStateFlow()
 
-    suspend fun getChatList(context: Context) {
-        _isLoadingChat.value = true
-        _isChatLoadingFailed.value = null
-        _noMoreChat.value = null
+    private var paginationLimit = 10
 
-        clientInteractor.retrieveChats(context = context, limit = 100).collect() {
+    private var _chatLimit = MutableStateFlow(paginationLimit)
+    val chatLimit = _chatLimit.asStateFlow()
+
+    suspend fun getChats(context: Context) {
+        clientInteractor.getChats(context = context).collect {
+
+            if (it.isNotEmpty()) {
+                _chatItems.value = it
+                _isLoadingChat.value = false
+            }
+        }
+    }
+
+    suspend fun retrieveChats(context: Context) {
+
+        clientInteractor.retrieveChats(context = context, limit = 10).collect {
+            _isLoadingChat.value = false
+            _isChatLoadingFailed.value = null
+            _noMoreChat.value = null
             when (it) {
-                is LoadChatResult.ChatList -> {
-                    _chatItems.value = it.chats
+                is LoadChatResult.ChatUpdated -> {
+
                 }
 
                 is LoadChatResult.LoadingError -> {
@@ -48,8 +65,10 @@ class ChatListViewModel @Inject constructor(
                     _noMoreChat.value = true
                 }
             }
-
-            _isLoadingChat.value = false
         }
+    }
+
+    fun updateChatLimit() {
+        _chatLimit.value = _chatLimit.value + paginationLimit
     }
 }

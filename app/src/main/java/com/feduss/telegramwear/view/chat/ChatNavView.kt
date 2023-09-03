@@ -9,7 +9,7 @@ import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.TimeTextDefaults
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.feduss.telegram.entity.consts.Section
-import com.feduss.telegramwear.view.login.MainActivityViewController
+import com.feduss.telegramwear.view.MainActivityViewController
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.compose.navscaffold.WearNavScaffold
 import com.google.android.horologist.compose.navscaffold.scrollable

@@ -9,7 +9,7 @@ import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.TimeTextDefaults
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.feduss.telegram.entity.consts.Section
-import com.feduss.telegramwear.view.chat.ChatList
+import com.feduss.telegramwear.view.MainActivityViewController
 import com.feduss.telegramwear.view.login.authtype.LoginAuthChoice
 import com.feduss.telegramwear.view.login.authtype.phonenumber.LoginAuthPhoneNumber
 import com.feduss.telegramwear.view.login.authtype.qrcode.LoginAuthQrCode

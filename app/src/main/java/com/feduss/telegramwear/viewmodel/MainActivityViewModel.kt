@@ -1,9 +1,6 @@
 package com.feduss.telegramwear.viewmodel
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
@@ -12,7 +9,6 @@ import com.feduss.telegramwear.business.ClientInteractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,7 +28,7 @@ class MainActivityViewModel @Inject constructor(
 
     private suspend fun getAuthStatus() {
 
-        clientInteractor.getStatus().asFlow().collect() { authStatus ->
+        clientInteractor.getAuthStatus().collect { authStatus ->
             _authStatus.value = authStatus
             Log.e("test123: ", "authStatus value: ${_authStatus.value}")
         }

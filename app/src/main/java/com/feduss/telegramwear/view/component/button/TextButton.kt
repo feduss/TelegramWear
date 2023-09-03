@@ -11,12 +11,13 @@ import com.feduss.telegramwear.colors.AppColors
 
 @Composable
 fun TextButton(
+    modifier: Modifier = Modifier.fillMaxWidth(0.8f),
     enabled: Boolean,
     onClick: () -> Unit,
     title: String
 ) {
     Button(
-        modifier = Modifier.fillMaxWidth(0.8f),
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             backgroundColor = AppColors.TelegramBlue.toColor()
         ),

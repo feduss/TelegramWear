@@ -1,7 +1,6 @@
 package com.feduss.telegramwear.viewmodel.login.otp
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.feduss.telegram.entity.consts.AuthStatus
 import com.feduss.telegramwear.business.ClientInteractor
@@ -47,7 +46,7 @@ class LoginOtpViewModel @Inject constructor(
     }
 
     private suspend fun check2FA() {
-        clientInteractor.getStatus().asFlow().collect() { authStatus ->
+        clientInteractor.getAuthStatus().collect { authStatus ->
             if (_isOtpValid.value == true) {
                 when(authStatus) {
                     AuthStatus.Waiting2FA -> _state.value = State.GoTo2FA

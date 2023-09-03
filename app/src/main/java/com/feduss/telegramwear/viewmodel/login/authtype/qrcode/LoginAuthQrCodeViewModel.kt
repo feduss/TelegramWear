@@ -4,13 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.feduss.telegram.entity.consts.AuthStatus
-import com.feduss.telegramwear.business.result.QrCodeResult
 import com.feduss.telegramwear.business.ClientInteractor
+import com.feduss.telegramwear.business.result.QrCodeResult
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -95,7 +93,7 @@ class LoginAuthQrCodeViewModel @Inject constructor(
     }
 
     private suspend fun check2FA() {
-        clientInteractor.getStatus().asFlow().collect{ authStatus ->
+        clientInteractor.getAuthStatus().collect { authStatus ->
             when(authStatus) {
                 AuthStatus.Waiting2FA -> _state.value = State.GoTo2FA
                 else -> {}

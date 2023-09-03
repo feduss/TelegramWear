@@ -1,12 +1,12 @@
 package com.feduss.telegramwear.business
 
 import android.content.Context
-import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Paint.Align
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
@@ -19,26 +19,27 @@ import com.feduss.telegramwear.data.ClientRepository
 import com.feduss.telegramwear.data.response.LoadChatResponse
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import org.drinkless.td.libcore.telegram.TdApi
+import java.io.File
+import java.io.FileNotFoundException
+import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
 import java.time.Instant.now
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
-
 
 interface ClientInteractor {
     fun sendOTP(phoneNumber: String): Flow<Boolean>
     fun checkOTP(otp: String): Flow<Boolean>
     suspend fun retrieveQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
-    fun getStatus(): LiveData<AuthStatus>
+    fun getAuthStatus(): Flow<AuthStatus>
     fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult>
+    fun getChats(context: Context): Flow<ArrayList<ChatItemModel>>
 }
 
 class ClientInteractorImpl @Inject constructor(
@@ -77,9 +78,9 @@ class ClientInteractorImpl @Inject constructor(
         return clientRepository.checkPassword(password)
     }
 
-    override fun getStatus(): LiveData<AuthStatus> {
+    override fun getAuthStatus(): Flow<AuthStatus> {
 
-        return Transformations.map(clientRepository.getStatus()) { rawStatus ->
+        return clientRepository.getAuthStatus().map { rawStatus ->
             when (rawStatus) {
                 TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR -> AuthStatus.Waiting2FA
                 TdApi.AuthorizationStateWaitCode.CONSTRUCTOR -> AuthStatus.WaitingOTP
@@ -93,76 +94,96 @@ class ClientInteractorImpl @Inject constructor(
     // TODO: temp impl
     override fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult> {
 
-        return clientRepository.retrieveChats(limit).flatMapMerge { result ->
-            flow {
-                when(result) {
-                    is LoadChatResponse.ChatList -> {
+        return clientRepository.retrieveChats(limit).map { result ->
+            when(result) {
+                is LoadChatResponse.ChatUpdated -> {
+                    LoadChatResult.ChatUpdated
+                }
 
-                        val orderById = result.ids.withIndex().associate { (index, it) -> it to index }
-                        val sortedRawChats = result.chats.sortedBy { orderById[it.id] }
+                is LoadChatResponse.NoMoreChat -> {
+                    LoadChatResult.NoMoreChat
+                }
 
-                        val resultChats = sortedRawChats.mapNotNull {chat ->
-
-                            val personName = chat.title ?: "No name"
-
-                            val image = getProfilePhoto(chat, personName)
-
-                            val (lastMessageImage: Bitmap?, lastMessage) = getLastMessage(chat, context)
-
-                            val lastMessageDate: String = getLastMessageDate(
-                                chat,
-                                context
-                            )
-
-
-                            val isPinned = chat.positions.count { it.isPinned } != 0
-                            val isMuted = chat.notificationSettings.muteFor != 0
-                            val unreadMessagesCount = chat.unreadCount
-
-                            val chatItemModel = ChatItemModel(
-                                image = image,
-                                personName = personName.trim(),
-                                lastMessageImage = lastMessageImage,
-                                lastMessage = lastMessage.trim(),
-                                lastMessageDate = lastMessageDate,
-                                unreadMessagesCount = unreadMessagesCount,
-                                isPinned = isPinned,
-                                isMuted = isMuted
-                            )
-
-                            chatItemModel
-                        }
-
-                        emit(LoadChatResult.ChatList(resultChats))
-                    }
-
-                    is LoadChatResponse.NoMoreChat -> {
-                        emit(LoadChatResult.NoMoreChat)
-                    }
-
-                    else -> { emit(LoadChatResult.LoadingError) }
+                else -> {
+                    LoadChatResult.LoadingError
                 }
             }
         }
     }
 
+    override fun getChats(context: Context): Flow<ArrayList<ChatItemModel>> {
+
+        return clientRepository.getChats().map { result ->
+            val orders = result.associate {
+                    chat -> chat.id to chat.positions.firstOrNull() {
+                    position -> position.order > 0
+                }?.order
+            }
+
+            val sortedRawChats = result.sortedByDescending { orders[it.id] }
+
+            val resultChats = sortedRawChats.map { chat ->
+
+                val personName = chat.title ?: "No name"
+
+                val image = getProfilePhoto(chat, personName)
+
+                var (lastMessageImage: Bitmap?, lastMessage) = getLastMessage(chat, context)
+
+                val lastMessageDate: String = getLastMessageDate(
+                    chat,
+                    context
+                )
+
+
+                val isPinned = chat.positions.count { it.isPinned } != 0
+                val isMuted = chat.notificationSettings.muteFor != 0
+                val unreadMessagesCount = chat.unreadCount
+
+                //TODO: to remove, only for app demonstration purpose
+                //val replacementText: String = lastMessage.map { '*' }.joinToString("")
+                //lastMessage = lastMessage.trim().replaceRange(0, lastMessage.length, replacementText)
+                //
+
+                val chatItemModel = ChatItemModel(
+                    image = image,
+                    personName = personName.trim(),
+                    lastMessageImage = lastMessageImage,
+                    lastMessage = lastMessage,
+                    lastMessageDate = lastMessageDate,
+                    unreadMessagesCount = unreadMessagesCount,
+                    isPinned = isPinned,
+                    isMuted = isMuted
+                )
+
+                chatItemModel
+            }
+
+            ArrayList(resultChats)
+        }
+    }
+
     private fun getProfilePhoto(chat: TdApi.Chat, personName: String): Bitmap {
         val photoData = chat.photo?.small?.local?.path
-        var image = BitmapFactory.decodeFile(photoData)
+        val image: Bitmap = try {
 
-        if (image == null) {
-            image = getDefaultImageWithText(personName)
+            if (File(photoData ?: "").exists()) {
+                BitmapFactory.decodeFile(photoData)
+            } else {
+                getDefaultImageWithText(personName, chat.id)
+            }
+        } catch(e: Exception) {
+            getDefaultImageWithText(personName, chat.id)
         }
+
         return image
     }
 
     private fun getLastMessage(chat: TdApi.Chat,context: Context): Pair<Bitmap?, String> {
         var lastMessageImage: Bitmap? = null
-        var lastMessage = ""
+        val lastMessage: String
 
-        val chatContent = chat.lastMessage?.content
-
-        when (chatContent) {
+        when (val chatContent = chat.lastMessage?.content) {
             is TdApi.MessageText -> {
                 lastMessage = chatContent.text.text
             }
@@ -215,14 +236,12 @@ class ClientInteractorImpl @Inject constructor(
             chat.lastMessage?.date?.toLong() ?: 0L
         )
 
-        val now = now()
-
         val diff: Duration = Duration.between(
             rawLastMessageDate,
             now()
         )
 
-        val lastMessaDate: String = if (diff.toMinutes() < 1L) {
+        val lastMessageDate: String = if (diff.toMinutes() < 1L) {
             context.getString(R.string.last_message_date_less_than_minute)
         } else if (diff.toMinutes() == 1L) {
             context.getString(R.string.last_message_date_one_minute)
@@ -237,23 +256,28 @@ class ClientInteractorImpl @Inject constructor(
         } else {
             context.getString(R.string.last_message_date_n_days, diff.toDays().toString())
         }
-        return lastMessaDate
+        return lastMessageDate
     }
 
-    private fun getDefaultImageWithText(personName: String): Bitmap {
+    private fun getDefaultImageWithText(personName: String, chatId: Long): Bitmap {
 
         val colors = listOf(
             Color.Red,
-            Color.Blue,
             Color.Green,
             Color.Yellow,
-            Color.Cyan,
-            Color.LightGray
+            Color.Blue,
+            Color(0x80008000), //Purple
+            Color(0xFFC0CB00), //Pink
+            Color.Blue,
+            Color(0xFFA50000) //Orange
         )
+
+        var id = (chatId.toString().replace("-100", "-")).toLong()
+        if (id < 0) id = -id;
+        val randomColor = colors[intArrayOf(0, 7, 4, 1, 6, 3, 5)[(id.mod(7))]];
 
         val image = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(image)
-        val randomColor = colors.random()
         val backgroundColor: Int = android.graphics.Color.argb(
             randomColor.alpha,
             randomColor.red,
@@ -281,9 +305,12 @@ class ClientInteractorImpl @Inject constructor(
 
         val splittedStrings = personName.split(" ")
         val text = if (splittedStrings.count() > 1) {
-            "${splittedStrings[0].first().uppercase()}${splittedStrings[1].first().uppercase()}"
+            val firstChar = splittedStrings[0].firstOrNull() ?: ' '
+            val secondChar = splittedStrings[1].firstOrNull() ?: ' '
+            "${firstChar.uppercase()}${secondChar.uppercase()}"
         } else {
-            splittedStrings[0].first().toString().uppercase()
+            val char = personName.firstOrNull() ?: ' '
+            char.uppercase()
         }
 
         canvas.drawText(
