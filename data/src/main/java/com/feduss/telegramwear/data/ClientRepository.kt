@@ -1,22 +1,27 @@
 package com.feduss.telegramwear.data
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.feduss.telegram.entity.consts.TdLibParam
 import com.feduss.telegramwear.data.response.LoadChatResponse
+import com.feduss.telegramwear.data.response.RawChat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.runBlocking
 import org.drinkless.td.libcore.telegram.Client
 import org.drinkless.td.libcore.telegram.TdApi
 import org.drinkless.td.libcore.telegram.TdApi.SetLogVerbosityLevel
 import org.drinkless.td.libcore.telegram.TdApi.UpdateChatTitle
+import org.drinkless.td.libcore.telegram.TdApi.UserStatusOnline
 import java.io.File
 import javax.inject.Inject
 
@@ -29,20 +34,28 @@ interface ClientRepository {
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<Int>
     fun retrieveChats(limit: Int): Flow<LoadChatResponse>
-    fun getChats(): Flow<List<TdApi.Chat>>
+    fun getChats(): Flow<RawChat>
 }
 
 class ClientRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context
 ): ClientRepository {
-    internal lateinit var client: Client
-    internal var authStatus = MutableStateFlow(-1)
+    private lateinit var client: Client
+    private var authStatus = MutableStateFlow(-1)
 
-    var chats = MutableStateFlow(
-        mapOf<Long, TdApi.Chat>()
+    @OptIn(DelicateCoroutinesApi::class)
+    private val threadContext = newSingleThreadContext("threadContext")
+
+    private var chats = mapOf<Long, TdApi.Chat>()
+    private var chatsFlow = MutableSharedFlow<Map<Long, TdApi.Chat>>(
+        replay = 10,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    val mainHandler = Handler(Looper.getMainLooper())
+    private var usersStatus = mapOf<Long, Boolean?>()
+
+    private var usersStatusFlow = MutableSharedFlow<Map<Long, Boolean?>>(
+    )
 
     init {
         val appDir = context.getExternalFilesDir(null).toString()
@@ -56,11 +69,19 @@ class ClientRepositoryImpl @Inject constructor(
     // Init fun
 
     private fun setupHandler(appDir: String) {
-        client = Client.create({ tdApiObject ->
-            handleUpdate(tdApiObject, appDir)
-        },
-        null,
-        null
+        client = Client.create(
+            //updateHandler
+            { tdApiObject ->
+                handleUpdate(tdApiObject, appDir)
+            },
+            //updateExceptionHandler
+            {
+                //Log.e("LogTest: ", "updateExceptionHandler: ${it.localizedMessage}")
+            },
+            //defaultExceptionHandler
+            {
+                //Log.e("LogTest: ", "defaultExceptionHandler: ${it.localizedMessage}")
+            }
         )
 
     }
@@ -69,6 +90,7 @@ class ClientRepositoryImpl @Inject constructor(
         tdApiObject: TdApi.Object?,
         appDir: String
     ) {
+        //Log.i("Status update", " --> $tdApiObject")
         when (tdApiObject) {
             is TdApi.UpdateAuthorizationState -> {
                 val authState = tdApiObject.authorizationState
@@ -81,72 +103,125 @@ class ClientRepositoryImpl @Inject constructor(
 
             is TdApi.UpdateNewChat -> {
 
-                updateChats { map ->
-                    map[tdApiObject.chat.id] = tdApiObject.chat
+                updateChats { newChats ->
+                    newChats[tdApiObject.chat.id] = tdApiObject.chat
+                    newChats
                 }
-                //Log.i("LogTest: ", "new/updated chat with id ${tdApiObject.chat.id}...chats size: ${chats.value.size}")
             }
 
             is TdApi.UpdateChatPhoto -> {
 
-                updateChats { map ->
-                    map[tdApiObject.chatId]?.photo = tdApiObject.photo
+                updateChats { newChats ->
+                    newChats[tdApiObject.chatId]?.photo = tdApiObject.photo
+                    newChats
                 }
             }
 
             is UpdateChatTitle -> {
 
-                updateChats { map ->
-                    map[tdApiObject.chatId]?.title = tdApiObject.title
+                updateChats { newChats ->
+                    newChats[tdApiObject.chatId]?.title = tdApiObject.title
+                    newChats
                 }
             }
 
             is TdApi.UpdateChatLastMessage -> {
 
-                updateChats { map ->
-                    map[tdApiObject.chatId]?.lastMessage = tdApiObject.lastMessage
+                updateChats { newChats ->
+                    newChats[tdApiObject.chatId]?.lastMessage = tdApiObject.lastMessage
+                    newChats
                 }
             }
 
             is TdApi.UpdateChatPosition -> {
 
-                updateChats { map ->
+                updateChats { newChats ->
                     val newPosition = tdApiObject.position
 
                     if (newPosition.order == 0L){
-                        map.remove(tdApiObject.chatId)
+                        newChats.remove(tdApiObject.chatId)
                     } else {
-                        val oldPositions = chats.value[tdApiObject.chatId]?.positions
+                        val oldPositions = chats[tdApiObject.chatId]?.positions
                         val newSize = (oldPositions?.size ?: 0) + 1
                         val newPositions = Array<TdApi.ChatPosition>(newSize) { newPosition }
                         oldPositions?.iterator()?.withIndex()?.forEach { item ->
                             newPositions[item.index + 1] = item.value
                         }
 
-                        map[tdApiObject.chatId]?.positions = newPositions
+                        newChats[tdApiObject.chatId]?.positions = newPositions
                     }
+
+                    newChats
                 }
             }
 
             is TdApi.UpdateChatNotificationSettings -> {
 
-                updateChats { map ->
-                    map[tdApiObject.chatId]?.notificationSettings = tdApiObject.notificationSettings
+                updateChats { newChats ->
+                    newChats[tdApiObject.chatId]?.notificationSettings = tdApiObject.notificationSettings
+                    newChats
                 }
+            }
 
+            is TdApi.UpdateNewMessage -> {
 
+                updateChats { newChats ->
+                    newChats[tdApiObject.message.chatId]?.lastMessage = tdApiObject.message
+                    newChats
+                }
+            }
 
+            is TdApi.UpdateMessageEdited -> { /*Handle in other state */ }
+
+            is TdApi.UpdateMessageContent -> {
+                updateChats { newChats ->
+                    newChats[tdApiObject.chatId]?.lastMessage?.content = tdApiObject.newContent
+                    newChats
+                }
+            }
+
+            is TdApi.UpdateDeleteMessages -> { /*Handle in other state */ }
+
+            is TdApi.UpdateUserStatus -> {
+
+                updateUsersStatus { newUsersStatus ->
+                    newUsersStatus[tdApiObject.userId] = tdApiObject.status is UserStatusOnline
+                    newUsersStatus
+                }
+            }
+
+            is TdApi.UpdateChatDraftMessage -> {
+
+                updateChats { newChats ->
+
+                    newChats[tdApiObject.chatId]?.draftMessage = tdApiObject.draftMessage
+                    newChats
+                }
+            }
+
+            else -> {
+                //Log.i("OtherStatus", " --> $tdApiObject")
             }
         }
     }
 
-    private fun updateChats(updateHandler: (MutableMap<Long, TdApi.Chat>) -> Unit) {
-        synchronized(chats) {
-            chats.update { immutableMap ->
-                immutableMap.toMutableMap().apply {
-                    updateHandler(this)
-                }
-            }
+    private fun updateChats(updateHandler: (MutableMap<Long, TdApi.Chat>) -> MutableMap<Long, TdApi.Chat>) {
+
+        val updatedChats = updateHandler(chats.toMutableMap())
+        chats = updatedChats
+        runBlocking(threadContext) {
+            chatsFlow.emit(updatedChats)
+
+        }
+
+    }
+
+    private fun updateUsersStatus(updateHandler: (MutableMap<Long, Boolean?>) -> MutableMap<Long, Boolean?>) {
+        val updatedUsersStatus = updateHandler(usersStatus.toMutableMap())
+        usersStatus = updatedUsersStatus
+
+        runBlocking(threadContext) {
+            usersStatusFlow.emit(updatedUsersStatus)
         }
     }
 
@@ -275,7 +350,6 @@ class ClientRepositoryImpl @Inject constructor(
         return authStatus
     }
 
-
     // Chat list
 
     override fun retrieveChats(limit: Int) = flow {
@@ -307,9 +381,9 @@ class ClientRepositoryImpl @Inject constructor(
             } else if (tdApiObject.constructor == TdApi.Ok.CONSTRUCTOR) {
                 Log.i("LogTest: ", "retrieveChat downloading chats")
                 downloadChats(
-                    chatList,
-                    limit,
-                    completionDeferred
+                    chatList = chatList,
+                    limit = limit,
+                    completionDeferred = completionDeferred
                 )
                 //completionDeferred.complete(LoadChatResponse.ChatUpdated)
             } else {
@@ -318,9 +392,19 @@ class ClientRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getChats(): Flow<List<TdApi.Chat>> {
-        return chats.map {
-            it.values.toList()
+    override fun getChats(): Flow<RawChat> {
+
+        return chatsFlow.combine(usersStatusFlow) { chats, usersStatus ->
+            //Log.i("LogTest: ", "Triggered with chat size ${chats.size}")
+            val transformedChats: List<TdApi.Chat> = chats.map {
+                it.value
+            }
+
+            RawChat(
+                transformedChats,
+                usersStatus
+            )
         }
+        .flowOn(threadContext)
     }
 }

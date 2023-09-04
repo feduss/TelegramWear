@@ -6,11 +6,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Paint.Align
-import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
 import com.feduss.telegram.entity.consts.AuthStatus
 import com.feduss.telegram.entity.model.ChatItemModel
 import com.feduss.telegramwear.business.result.LoadChatResult
@@ -18,15 +15,15 @@ import com.feduss.telegramwear.business.result.QrCodeResult
 import com.feduss.telegramwear.data.ClientRepository
 import com.feduss.telegramwear.data.response.LoadChatResponse
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import org.drinkless.td.libcore.telegram.TdApi
+import org.drinkless.td.libcore.telegram.TdApi.InputMessageText
 import java.io.File
-import java.io.FileNotFoundException
-import java.lang.Exception
 import java.time.Duration
 import java.time.Instant
 import java.time.Instant.now
@@ -38,7 +35,7 @@ interface ClientInteractor {
     suspend fun retrieveQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<AuthStatus>
-    fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult>
+    fun retrieveChats(limit: Int): Flow<LoadChatResult>
     fun getChats(context: Context): Flow<ArrayList<ChatItemModel>>
 }
 
@@ -92,7 +89,7 @@ class ClientInteractorImpl @Inject constructor(
     }
 
     // TODO: temp impl
-    override fun retrieveChats(context: Context, limit: Int): Flow<LoadChatResult> {
+    override fun retrieveChats(limit: Int): Flow<LoadChatResult> {
 
         return clientRepository.retrieveChats(limit).map { result ->
             when(result) {
@@ -113,18 +110,18 @@ class ClientInteractorImpl @Inject constructor(
 
     override fun getChats(context: Context): Flow<ArrayList<ChatItemModel>> {
 
-        return clientRepository.getChats().map { result ->
-            val orders = result.associate {
+        return clientRepository.getChats().map { rawChats ->
+            val orders = rawChats.chats.associate {
                     chat -> chat.id to chat.positions.firstOrNull() {
                     position -> position.order > 0
                 }?.order
             }
 
-            val sortedRawChats = result.sortedByDescending { orders[it.id] }
+            val sortedRawChats = rawChats.chats.sortedByDescending { orders[it.id] }
 
             val resultChats = sortedRawChats.map { chat ->
 
-                val personName = chat.title ?: "No name"
+                val personName = chat.title ?: context.getString(R.string.chat_title_deleted_account)
 
                 val image = getProfilePhoto(chat, personName)
 
@@ -153,7 +150,8 @@ class ClientInteractorImpl @Inject constructor(
                     lastMessageDate = lastMessageDate,
                     unreadMessagesCount = unreadMessagesCount,
                     isPinned = isPinned,
-                    isMuted = isMuted
+                    isMuted = isMuted,
+                    isOnline = rawChats.usersStatus[chat.id] == true
                 )
 
                 chatItemModel
@@ -161,6 +159,7 @@ class ClientInteractorImpl @Inject constructor(
 
             ArrayList(resultChats)
         }
+        .flowOn(Dispatchers.IO)
     }
 
     private fun getProfilePhoto(chat: TdApi.Chat, personName: String): Bitmap {
@@ -183,50 +182,55 @@ class ClientInteractorImpl @Inject constructor(
         var lastMessageImage: Bitmap? = null
         val lastMessage: String
 
-        when (val chatContent = chat.lastMessage?.content) {
-            is TdApi.MessageText -> {
-                lastMessage = chatContent.text.text
-            }
+        val draftMessage = chat.draftMessage
+        if (draftMessage != null) {
+            val inputMessageText = draftMessage.inputMessageText as InputMessageText
+            lastMessage = context.getString(R.string.last_message_draft, inputMessageText.text.text)
+        } else {
+            when (val chatContent = chat.lastMessage?.content) {
+                is TdApi.MessageText -> {
+                    lastMessage = chatContent.text.text
+                }
 
-            is TdApi.MessageDocument -> {
-                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_file)
-                lastMessage = chatContent.document.fileName
-            }
+                is TdApi.MessageDocument -> {
+                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_file)
+                    lastMessage = chatContent.document.fileName
+                }
 
-            is TdApi.MessagePhoto -> {
-                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_photo)
-                lastMessage = "Foto"
-            }
+                is TdApi.MessagePhoto -> {
+                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_photo)
+                    lastMessage = "Foto"
+                }
 
-            is TdApi.MessageVideo -> {
-                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_video)
-                lastMessage = "Video"
-            }
+                is TdApi.MessageVideo -> {
+                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_video)
+                    lastMessage = "Video"
+                }
 
-            is TdApi.MessageVoiceNote -> {
-                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_music)
-                lastMessage = "Audio"
-            }
+                is TdApi.MessageVoiceNote -> {
+                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_music)
+                    lastMessage = "Audio"
+                }
 
-            is TdApi.MessageAnimation -> {
-                lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_gif)
-                lastMessage = "GIF"
-            }
+                is TdApi.MessageAnimation -> {
+                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_gif)
+                    lastMessage = "GIF"
+                }
 
-            is TdApi.MessageSticker -> {
-                val stickerEmoji = chatContent.sticker.emoji
-                lastMessage = "${stickerEmoji} Sticker"
-            }
+                is TdApi.MessageSticker -> {
+                    val stickerEmoji = chatContent.sticker.emoji
+                    lastMessage = "${stickerEmoji} Sticker"
+                }
 
-            is TdApi.MessageAnimatedEmoji -> {
-                val stickerEmoji = chatContent.emoji
-                lastMessage = "${stickerEmoji} Sticker"
-            }
+                is TdApi.MessageAnimatedEmoji -> {
+                    val stickerEmoji = chatContent.emoji
+                    lastMessage = "${stickerEmoji} Sticker"
+                }
 
-            else -> {
-                lastMessage = "Messaggio non supportato"
+                else -> {
+                    lastMessage = context.getString(R.string.last_message_unsupported_message)
+                }
             }
-
         }
         return Pair(lastMessageImage, lastMessage)
     }

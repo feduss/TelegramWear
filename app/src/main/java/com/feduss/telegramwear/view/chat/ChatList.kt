@@ -28,6 +28,7 @@ import com.feduss.telegramwear.viewmodel.chat.ChatListViewModel
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.compose.layout.ScalingLazyColumn
 import com.google.android.horologist.compose.layout.ScalingLazyColumnState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalHorologistApi::class)
@@ -40,7 +41,7 @@ fun ChatList(
 ) {
 
     val isLoadingChats = viewModel.isLoadingChat.collectAsState()
-    val noMoreChat = viewModel.noMoreChat.collectAsState()
+    val isUpdatingChatLimit = viewModel.isUpdatingChatLimit.collectAsState()
     val isChatLoadingFailed = viewModel.isChatLoadingFailed.collectAsState()
     val chatItems = viewModel.chatItems.collectAsState()
     val chatLimit = viewModel.chatLimit.collectAsState()
@@ -49,12 +50,8 @@ fun ChatList(
     val coroutine = rememberCoroutineScope()
 
     LaunchedEffect(coroutine) {
-        coroutine.launch {
+        coroutine.launch(Dispatchers.IO) {
             viewModel.getChats(context = activity)
-        }
-
-        coroutine.launch {
-            viewModel.retrieveChats(context = activity)
         }
     }
 
@@ -64,7 +61,7 @@ fun ChatList(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Si è verificato un errore durante il caricamento delle chat.",
+                text = stringResource(R.string.chat_list_loading_error),
                 textAlign = TextAlign.Center
             )
         }
@@ -83,7 +80,7 @@ fun ChatList(
                 }
             } else {
                 items(limitedChatItems) {
-                    ChatItem(
+                    ChatItem                    (
                         model = it,
                         onCardClick = {
 
@@ -91,7 +88,7 @@ fun ChatList(
                     )
                 }
 
-                if (chatLimit.value < chatItems.value.size) {
+                if (isUpdatingChatLimit.value == false && chatLimit.value < chatItems.value.size) {
                     item {
                         TextButton(
                             modifier = Modifier
@@ -105,6 +102,12 @@ fun ChatList(
                             },
                             title = stringResource(R.string.chat_list_load_more)
                         )
+                    }
+                }
+
+                if (isUpdatingChatLimit.value == true) {
+                    items(3) {
+                        ChatItemSkeleton()
                     }
                 }
             }
