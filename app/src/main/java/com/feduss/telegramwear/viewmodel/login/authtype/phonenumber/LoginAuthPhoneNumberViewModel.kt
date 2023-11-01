@@ -28,8 +28,10 @@ class LoginAuthPhoneNumberViewModel @Inject constructor(
     }
 
     suspend fun sendOTP() {
+        _isConfirmButtonEnabled.value = false
         clientInteractor.sendOTP(this.phoneNumber).collectLatest { isOtpSent ->
             _isOtpSent.value = isOtpSent
+            _isConfirmButtonEnabled.value = true
         }
     }
 }

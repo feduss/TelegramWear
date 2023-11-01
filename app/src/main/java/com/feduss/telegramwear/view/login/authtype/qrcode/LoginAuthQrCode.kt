@@ -21,6 +21,7 @@ import androidx.wear.compose.material.Text
 import com.feduss.telegram.entity.consts.Section
 import com.feduss.telegramwear.R
 import com.feduss.telegramwear.viewmodel.login.authtype.qrcode.LoginAuthQrCodeViewModel
+import com.feduss.telegramwear.viewmodel.login.otp.LoginOtpViewModel
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.compose.layout.ScalingLazyColumnState
 
@@ -35,8 +36,17 @@ fun LoginAuthQrCode(
     val qrCode = viewModel.qrCode.collectAsState()
     val state = viewModel.state.collectAsState()
 
-    if (state.value == LoginAuthQrCodeViewModel.State.GoTo2FA) {
-        navController.navigate(Section.Login2FAVerification.baseRoute)
+    when(state.value) {
+
+        LoginAuthQrCodeViewModel.State.GoTo2FA -> {
+            navController.navigate(Section.Login2FAVerification.baseRoute)
+        }
+
+        LoginAuthQrCodeViewModel.State.GoToChatList -> {
+            navController.navigate(Section.ChatList.baseRoute)
+        }
+
+        else -> {}
     }
 
     Column(

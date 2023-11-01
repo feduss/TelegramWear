@@ -6,9 +6,9 @@ import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.feduss.telegram.entity.QrCodeResult
 import com.feduss.telegram.entity.consts.AuthStatus
 import com.feduss.telegramwear.business.ClientInteractor
-import com.feduss.telegramwear.business.result.QrCodeResult
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -27,6 +27,7 @@ class LoginAuthQrCodeViewModel @Inject constructor(
 
     sealed class State {
         data object GoTo2FA: State()
+        data object GoToChatList: State()
     }
 
     val mainHandler = Handler(Looper.getMainLooper())
@@ -67,7 +68,7 @@ class LoginAuthQrCodeViewModel @Inject constructor(
     }
 
     private suspend fun fetchQrCode() {
-        clientInteractor.retrieveQrCode().collectLatest() { qrCodeResult ->
+        clientInteractor.retrieveQrCode().collectLatest { qrCodeResult ->
             if (qrCodeResult is QrCodeResult.ValidQrCode) {
                 generateQrCodeFromLink(qrCodeResult.link)
             } else {
@@ -96,6 +97,7 @@ class LoginAuthQrCodeViewModel @Inject constructor(
         clientInteractor.getAuthStatus().collect { authStatus ->
             when(authStatus) {
                 AuthStatus.Waiting2FA -> _state.value = State.GoTo2FA
+                AuthStatus.ClientLoggedIn -> _state.value = State.GoToChatList
                 else -> {}
             }
         }

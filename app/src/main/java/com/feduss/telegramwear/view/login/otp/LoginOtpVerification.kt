@@ -52,8 +52,17 @@ fun LoginOtpVerification(
     val isOtpValid = viewModel.isOtpValid.collectAsState()
     val state = viewModel.state.collectAsState()
 
-    if (state.value == LoginOtpViewModel.State.GoTo2FA) {
-        navController.navigate(Section.Login2FAVerification.baseRoute)
+    when(state.value) {
+
+        LoginOtpViewModel.State.GoTo2FA -> {
+            navController.navigate(Section.Login2FAVerification.baseRoute)
+        }
+
+        LoginOtpViewModel.State.GoToChatList -> {
+            navController.navigate(Section.ChatList.baseRoute)
+        }
+
+        else -> {}
     }
 
     if (isProgressBarVisible) {

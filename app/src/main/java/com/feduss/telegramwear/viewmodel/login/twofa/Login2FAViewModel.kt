@@ -28,6 +28,7 @@ class Login2FAViewModel @Inject constructor(
         _isConfirmButtonEnabled.value = false
         clientInteractor.checkPassword(password).collectLatest { isSuccess ->
             _isPasswordValidated.value = isSuccess
+            _isConfirmButtonEnabled.value = true
         }
     }
 }

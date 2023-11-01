@@ -24,13 +24,14 @@ import org.drinkless.td.libcore.telegram.TdApi.UpdateChatTitle
 import org.drinkless.td.libcore.telegram.TdApi.UserStatusOnline
 import java.io.File
 import javax.inject.Inject
+import com.feduss.telegram.entity.QrCodeResult
 
 
 interface ClientRepository {
     fun sendOTP(phoneNumber: String): Flow<Boolean>
     fun checkOTP(otp: String): Flow<Boolean>
-    fun fetchQRCodeLink(): Flow<String?>
-    fun requestQrCode(): Flow<String?>
+    fun fetchQRCodeLink(): Flow<QrCodeResult>
+    fun requestQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<Int>
     fun retrieveChats(limit: Int): Flow<LoadChatResponse>
@@ -319,26 +320,38 @@ class ClientRepositoryImpl @Inject constructor(
     // Qr code
 
     override fun fetchQRCodeLink() = flow {
-        val completionDeferred = CompletableDeferred<String?>()
+        val completionDeferred = CompletableDeferred<QrCodeResult>()
         client.send(TdApi.GetAuthorizationState()) { tdApiObject ->
             //Pending/prev qr code request
             if (tdApiObject.constructor == TdApi.AuthorizationStateWaitOtherDeviceConfirmation.CONSTRUCTOR) {
-                completionDeferred.complete(getQrCodeResponse(tdApiObject))
+                val prevValidQrCode = getQrCodeResponse(tdApiObject)
+                if(prevValidQrCode != null) {
+                    completionDeferred.complete(QrCodeResult.ValidQrCode(prevValidQrCode))
+                } else {
+                    completionDeferred.complete(QrCodeResult.Error)
+                }
             } else {
-                completionDeferred.complete(null)
+                completionDeferred.complete(QrCodeResult.Error)
             }
         }
         emit(completionDeferred.await())
     }
 
     override fun requestQrCode() = flow {
-        val completionDeferred = CompletableDeferred<String?>()
+        val completionDeferred = CompletableDeferred<QrCodeResult>()
         client.send(TdApi.RequestQrCodeAuthentication()) { tdApiObject ->
             if (tdApiObject.constructor == TdApi.Ok.CONSTRUCTOR) {
-                completionDeferred.complete(getQrCodeResponse(tdApiObject))
+                val qrCodeLink = getQrCodeResponse(tdApiObject)
+                if (qrCodeLink != null) {
+                    completionDeferred.complete(
+                        QrCodeResult.ValidQrCode(qrCodeLink)
+                    )
+                } else {
+                    completionDeferred.complete(QrCodeResult.Error)
+                }
             } else if (tdApiObject.constructor == TdApi.Error.CONSTRUCTOR) {
                 Log.e("LogTest: ", "Can't generate qr code")
-                completionDeferred.complete(null)
+                completionDeferred.complete(QrCodeResult.Error)
             }
 
         }
@@ -356,7 +369,7 @@ class ClientRepositoryImpl @Inject constructor(
 
     //2FA
 
-    override fun checkPassword(password: String) = flow<Boolean> {
+    override fun checkPassword(password: String) = flow {
         val completionDeferred = CompletableDeferred<Boolean>()
         client.send(TdApi.CheckAuthenticationPassword(password)) { tdApiObject ->
             if (tdApiObject.constructor == TdApi.Ok.CONSTRUCTOR) {

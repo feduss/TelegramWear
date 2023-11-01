@@ -1,14 +1,12 @@
 package com.feduss.telegramwear.viewmodel.login.otp
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.feduss.telegram.entity.consts.AuthStatus
 import com.feduss.telegramwear.business.ClientInteractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,6 +16,7 @@ class LoginOtpViewModel @Inject constructor(
 
     sealed class State {
         data object GoTo2FA: State()
+        data object GoToChatList: State()
     }
 
     private val _state = MutableStateFlow<State?>(null)
@@ -29,19 +28,17 @@ class LoginOtpViewModel @Inject constructor(
     private val _isOtpValid = MutableStateFlow<Boolean?>(null)
     var isOtpValid = _isOtpValid.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            check2FA()
-        }
-    }
-
     fun userHasEditedOtp(otp: String) {
         _isConfirmButtonEnabled.value = otp.isNotBlank()
     }
 
     suspend fun checkOtp(otp: String) {
+        _isConfirmButtonEnabled.value = false
         clientInteractor.checkOTP(otp).collectLatest { isSuccess ->
             _isOtpValid.value = isSuccess
+            _isConfirmButtonEnabled.value = true
+
+            check2FA()
         }
     }
 
@@ -50,6 +47,7 @@ class LoginOtpViewModel @Inject constructor(
             if (_isOtpValid.value == true) {
                 when(authStatus) {
                     AuthStatus.Waiting2FA -> _state.value = State.GoTo2FA
+                    AuthStatus.ClientLoggedIn -> _state.value = State.GoToChatList
                     else -> {}
                 }
             }

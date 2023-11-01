@@ -13,7 +13,7 @@ import com.feduss.telegram.entity.model.ChatItemModel
 import com.feduss.telegramwear.business.result.LoadChatResult
 import com.feduss.telegramwear.business.result.QrCodeResult
 import com.feduss.telegramwear.data.ClientRepository
-import com.feduss.telegramwear.data.response.LoadChatResponse
+import com.feduss.telegram.entity.QrCodeResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -32,7 +32,7 @@ import javax.inject.Inject
 interface ClientInteractor {
     fun sendOTP(phoneNumber: String): Flow<Boolean>
     fun checkOTP(otp: String): Flow<Boolean>
-    suspend fun retrieveQrCode(): Flow<QrCodeResult>
+    fun retrieveQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<AuthStatus>
     fun retrieveChats(limit: Int): Flow<LoadChatResult>
@@ -51,24 +51,19 @@ class ClientInteractorImpl @Inject constructor(
         return clientRepository.checkOTP(otp)
     }
 
-    // TODO: improve this fun
-    override suspend fun retrieveQrCode() = flow {
-        val completionDeferred = CompletableDeferred<QrCodeResult>()
-        clientRepository.fetchQRCodeLink().collectLatest { prevValidQrCode ->
-            if(prevValidQrCode == null) {
-                clientRepository.requestQrCode().collectLatest { newQrCode ->
-                    if (newQrCode == null) {
-                        completionDeferred.complete(QrCodeResult.Error)
-                    } else {
-                        completionDeferred.complete(QrCodeResult.ValidQrCode(newQrCode))
-                    }
-                }
+    override fun retrieveQrCode() = flow {
+        val completableDeferred = CompletableDeferred<QrCodeResult>()
+        clientRepository.fetchQRCodeLink().collectLatest { prevQrCode ->
+            if (prevQrCode != QrCodeResult.Error) {
+                completableDeferred.complete(prevQrCode)
             } else {
-                completionDeferred.complete(QrCodeResult.ValidQrCode(prevValidQrCode))
+                clientRepository.requestQrCode().collectLatest { newQrCode ->
+                    completableDeferred.complete(newQrCode)
+                }
             }
         }
 
-        emit(completionDeferred.await())
+        emit(completableDeferred.await())
     }
 
     override fun checkPassword(password: String): Flow<Boolean> {

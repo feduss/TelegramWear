@@ -1,4 +1,4 @@
-package com.feduss.telegramwear.business.result
+package com.feduss.telegram.entity
 
 sealed class QrCodeResult {
     data class ValidQrCode(var link: String): QrCodeResult()
