@@ -52,7 +52,7 @@ class ClientRepositoryImpl @Inject constructor(
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
 
-    private var usersStatus = mapOf<Long, Boolean?>()
+    private var chatIdForChatPhotoId = HashMap<Int, Long>()
 
     private var usersStatusFlow = MutableSharedFlow<Map<Long, Boolean?>>(
     )
@@ -101,7 +101,32 @@ class ClientRepositoryImpl @Inject constructor(
                 }
             }
 
+            is TdApi.UpdateFile -> {
+
+                //TODO: temp impl
+                if (tdApiObject.file.local.path.contains("profile_photos")) {
+                    updateChats { newChats ->
+                        val chatId = chatIdForChatPhotoId[tdApiObject.file.id]
+                        newChats[chatId]?.photo?.small = tdApiObject.file
+                        newChats
+                    }
+                }
+            }
+
             is TdApi.UpdateNewChat -> {
+                val chatPhotoId = tdApiObject.chat.photo?.small?.id ?: 0
+
+                chatIdForChatPhotoId[chatPhotoId] = tdApiObject.chat.id
+
+                client.send(
+                    TdApi.DownloadFile(
+                        chatPhotoId,
+                        1,
+                        0,
+                        0,
+                        true
+                    )
+                ) {}
 
                 updateChats { newChats ->
                     newChats[tdApiObject.chat.id] = tdApiObject.chat
