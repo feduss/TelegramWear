@@ -1,13 +1,17 @@
 package com.feduss.telegramwear.view.chat
 
+import android.graphics.Bitmap
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.TimeTextDefaults
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.feduss.telegram.entity.consts.Params
 import com.feduss.telegram.entity.consts.Section
 import com.feduss.telegramwear.view.MainActivityViewController
 import com.google.android.horologist.annotations.ExperimentalHorologistApi

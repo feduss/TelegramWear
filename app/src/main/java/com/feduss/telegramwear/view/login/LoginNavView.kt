@@ -53,6 +53,7 @@ fun LoginNavView(
         }
 
         scrollable(route = Section.LoginAuthChoice.baseRoute) {
+
             LoginAuthChoice(
                 navController = navController,
                 columnState = it.columnState

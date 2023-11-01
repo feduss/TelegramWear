@@ -1,5 +1,6 @@
 package com.feduss.telegramwear.view.chat
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,16 +20,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.material.Text
+import com.feduss.telegram.entity.consts.Section
 import com.feduss.telegramwear.R
 import com.feduss.telegramwear.view.MainActivityViewController
 import com.feduss.telegramwear.view.component.button.TextButton
-import com.feduss.telegramwear.view.component.card.chatlist.ChatItem
-import com.feduss.telegramwear.view.component.card.chatlist.ChatItemSkeleton
+import com.feduss.telegramwear.view.component.card.chat.list.ChatListItem
+import com.feduss.telegramwear.view.component.card.chat.list.ChatListItemSkeleton
 import com.feduss.telegramwear.viewmodel.chat.ChatListViewModel
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.compose.layout.ScalingLazyColumn
 import com.google.android.horologist.compose.layout.ScalingLazyColumnState
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalHorologistApi::class)
@@ -40,18 +41,26 @@ fun ChatList(
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
 
-    val isLoadingChats = viewModel.isLoadingChat.collectAsState()
     val isUpdatingChatLimit = viewModel.isUpdatingChatLimit.collectAsState()
     val isChatLoadingFailed = viewModel.isChatLoadingFailed.collectAsState()
-    val chatItems = viewModel.chatItems.collectAsState()
+    val chatItems = viewModel.chats.collectAsState()
+    val firstTimeLoading = viewModel.firstTimeLoading.collectAsState()
     val chatLimit = viewModel.chatLimit.collectAsState()
     val limitedChatItems = chatItems.value.toList().take(chatLimit.value)
+    val loggedUser = viewModel.retrieveLoggedUser().collectAsState(null)
 
     val coroutine = rememberCoroutineScope()
 
-    LaunchedEffect(coroutine) {
-        coroutine.launch(Dispatchers.IO) {
-            viewModel.getChats(context = activity)
+    LaunchedEffect(firstTimeLoading) {
+
+        Log.i("LogTest: ", "Loading chats list")
+
+        coroutine.launch {
+            viewModel.getChatModels(context = activity)
+        }
+
+        coroutine.launch {
+            viewModel.requestChats()
         }
     }
 
@@ -74,16 +83,29 @@ fun ChatList(
             columnState = columnState
         ){
 
-            if (isLoadingChats.value == true) {
+            if (chatItems.value.isEmpty()) {
                 items(3) {
-                    ChatItemSkeleton()
+                    ChatListItemSkeleton()
                 }
             } else {
                 items(limitedChatItems) {
-                    ChatItem                    (
+
+                    if (it.id == loggedUser.value?.id) {
+                        it.personName = "Messaggi salvati"
+                    }
+
+                    ChatListItem (
                         model = it,
                         onCardClick = {
+                            val args = listOf(it.id.toString())
 
+                            navController.currentBackStackEntry?.savedStateHandle?.apply {
+                                set("profilePhoto", it.image)
+                                set("profileName", it.personName)
+                                set("lastMessageId", it.lastMessageId)
+                            }
+
+                            navController.navigate(Section.ChatHistory.withArgs(args))
                         }
                     )
                 }
@@ -107,7 +129,7 @@ fun ChatList(
 
                 if (isUpdatingChatLimit.value == true) {
                     items(3) {
-                        ChatItemSkeleton()
+                        ChatListItemSkeleton()
                     }
                 }
             }

@@ -1,22 +1,28 @@
 package com.feduss.telegramwear.data
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
+import com.feduss.telegram.entity.LoadChatResult
+import com.feduss.telegram.entity.LoggedUser
+import com.feduss.telegram.entity.QrCodeResult
+import com.feduss.telegram.entity.consts.ChatHistoryMessageType
+import com.feduss.telegram.entity.consts.LastMessageType
+import com.feduss.telegram.entity.consts.MessageDeletionOption
+import com.feduss.telegram.entity.consts.MessageSendState
 import com.feduss.telegram.entity.consts.TdLibParam
-import com.feduss.telegramwear.data.response.LoadChatResponse
-import com.feduss.telegramwear.data.response.RawChat
+import com.feduss.telegram.entity.model.ChatHistoryItemModel
+import com.feduss.telegram.entity.model.ChatListItemModel
+import com.feduss.telegram.entity.model.MessageAuthor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.receiveAsFlow
 import org.drinkless.td.libcore.telegram.Client
 import org.drinkless.td.libcore.telegram.TdApi
 import org.drinkless.td.libcore.telegram.TdApi.SetLogVerbosityLevel
@@ -24,18 +30,19 @@ import org.drinkless.td.libcore.telegram.TdApi.UpdateChatTitle
 import org.drinkless.td.libcore.telegram.TdApi.UserStatusOnline
 import java.io.File
 import javax.inject.Inject
-import com.feduss.telegram.entity.QrCodeResult
 
 
 interface ClientRepository {
+    fun logout(): Flow<Boolean>
     fun sendOTP(phoneNumber: String): Flow<Boolean>
     fun checkOTP(otp: String): Flow<Boolean>
     fun fetchQRCodeLink(): Flow<QrCodeResult>
     fun requestQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<Int>
-    fun retrieveChats(limit: Int): Flow<LoadChatResponse>
-    fun getChats(): Flow<RawChat>
+    fun getMe(): Flow<LoggedUser?>
+    fun requestChats(limit: Int): Flow<LoadChatResult>
+    fun getChatModels(): Flow<ArrayList<ChatListItemModel>>
 }
 
 class ClientRepositoryImpl @Inject constructor(
@@ -43,20 +50,21 @@ class ClientRepositoryImpl @Inject constructor(
 ): ClientRepository {
     private lateinit var client: Client
     private var authStatus = MutableStateFlow(-1)
-
-    @OptIn(DelicateCoroutinesApi::class)
-    private val threadContext = newSingleThreadContext("threadContext")
+    private var loggedUser: LoggedUser? = null
 
     private var chats = mapOf<Long, TdApi.Chat>()
-    private var chatsFlow = MutableSharedFlow<Map<Long, TdApi.Chat>>(
-        replay = 10,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    private var chatsFlow = Channel<Map<Long, TdApi.Chat>>(
     )
 
     private var chatIdForChatPhotoId = HashMap<Int, Long>()
 
-    private var usersStatusFlow = MutableSharedFlow<Map<Long, Boolean?>>(
+    private var userOnlineStatus = mapOf<Long, Boolean?>()
+
+    private var userOnlineStatusFlow = Channel<Map<Long, Boolean?>>(
     )
+
+    private var userInfo = HashMap<Long, TdApi.User>()
+
 
     init {
         val appDir = context.getExternalFilesDir(null).toString()
@@ -77,11 +85,11 @@ class ClientRepositoryImpl @Inject constructor(
             },
             //updateExceptionHandler
             {
-                //Log.e("LogTest: ", "updateExceptionHandler: ${it.localizedMessage}")
+                Log.e("LogTest: ", "updateExceptionHandler: ${it.localizedMessage}")
             },
             //defaultExceptionHandler
             {
-                //Log.e("LogTest: ", "defaultExceptionHandler: ${it.localizedMessage}")
+                Log.e("LogTest: ", "defaultExceptionHandler: ${it.localizedMessage}")
             }
         )
 
@@ -235,20 +243,18 @@ class ClientRepositoryImpl @Inject constructor(
 
         val updatedChats = updateHandler(chats.toMutableMap())
         chats = updatedChats
-        runBlocking(threadContext) {
-            chatsFlow.emit(updatedChats)
+        chatsFlow.trySend(updatedChats)
+        userOnlineStatusFlow.trySend(userOnlineStatus)
 
-        }
 
     }
 
     private fun updateUsersStatus(updateHandler: (MutableMap<Long, Boolean?>) -> MutableMap<Long, Boolean?>) {
-        val updatedUsersStatus = updateHandler(usersStatus.toMutableMap())
-        usersStatus = updatedUsersStatus
 
-        runBlocking(threadContext) {
-            usersStatusFlow.emit(updatedUsersStatus)
-        }
+        val updatedUsersStatus = updateHandler(userOnlineStatus.toMutableMap())
+        userOnlineStatus = updatedUsersStatus
+        userOnlineStatusFlow.trySend(updatedUsersStatus)
+        chatsFlow.trySend(chats)
     }
 
     private fun setTdLibParams(appDir: String) {
@@ -283,6 +289,22 @@ class ClientRepositoryImpl @Inject constructor(
                 Log.e("LogTest: ", "Can't check database encryption key")
             }
         }
+    }
+
+
+    override fun logout(): Flow<Boolean> = flow {
+        val completionDeferred = CompletableDeferred<Boolean>()
+        client.send(TdApi.LogOut()) { tdApiObject ->
+            if (tdApiObject.constructor == TdApi.Ok.CONSTRUCTOR) {
+                Log.i("LogTest: ", "Logout completed")
+                completionDeferred.complete(true)
+            } else {
+                Log.e("LogTest: ", "Logout error")
+                completionDeferred.complete(false)
+            }
+        }
+
+        emit(completionDeferred.await())
     }
 
     // OTP
@@ -388,37 +410,64 @@ class ClientRepositoryImpl @Inject constructor(
         return authStatus
     }
 
+    // Me
+
+    override fun getMe() = flow {
+        val completionDeferred = CompletableDeferred<LoggedUser?>()
+        client.send(TdApi.GetMe()) { tdApiObject ->
+            if (tdApiObject is TdApi.User) {
+                loggedUser = if (tdApiObject != null) {
+                    LoggedUser(
+                        id = tdApiObject.id,
+                        username = tdApiObject.username
+                    )
+                } else {
+                    null
+                }
+                completionDeferred.complete(loggedUser)
+            } else {
+                completionDeferred.complete(null)
+            }
+        }
+
+        emit(completionDeferred.await())
+    }
+
     // Chat list
 
-    override fun retrieveChats(limit: Int) = flow {
-        val completionDeffered = CompletableDeferred<LoadChatResponse>()
+    override fun requestChats(limit: Int) = flow {
+        val completionDeffered = CompletableDeferred<LoadChatResult>()
 
-        downloadChats(
+        chatsFlow.send(mapOf())
+        userOnlineStatusFlow.send(mapOf())
+
+        requestChatOfType(
             TdApi.ChatListMain(),
             limit,
             completionDeffered
         )
 
+
         emit(completionDeffered.await())
     }
 
-    private fun downloadChats(
+    private fun requestChatOfType(
         chatList: TdApi.ChatList,
         limit: Int,
-        completionDeferred: CompletableDeferred<LoadChatResponse>
+        completionDeferred: CompletableDeferred<LoadChatResult>
     ) {
         client.send(TdApi.LoadChats(chatList, limit)) { tdApiObject ->
             if (tdApiObject.constructor == TdApi.Error.CONSTRUCTOR) {
                 if (tdApiObject is TdApi.Error && tdApiObject.code == 404) {
                     Log.e("LogTest: ", "retrieveChat error 404 --> ${tdApiObject.message}")
-                    completionDeferred.complete(LoadChatResponse.NoMoreChat)
+                    completionDeferred.complete(LoadChatResult.NoMoreChat)
                 } else {
                     Log.e("LogTest: ", "retrieveChat error other --> $tdApiObject")
-                    completionDeferred.complete(LoadChatResponse.LoadingError)
+                    completionDeferred.complete(LoadChatResult.LoadingError)
                 }
             } else if (tdApiObject.constructor == TdApi.Ok.CONSTRUCTOR) {
                 Log.i("LogTest: ", "retrieveChat downloading chats")
-                downloadChats(
+                requestChatOfType(
                     chatList = chatList,
                     limit = limit,
                     completionDeferred = completionDeferred
@@ -430,19 +479,98 @@ class ClientRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getChats(): Flow<RawChat> {
+    override fun getChatModels(): Flow<ArrayList<ChatListItemModel>> {
 
-        return chatsFlow.combine(usersStatusFlow) { chats, usersStatus ->
-            //Log.i("LogTest: ", "Triggered with chat size ${chats.size}")
-            val transformedChats: List<TdApi.Chat> = chats.map {
-                it.value
+        return chatsFlow.receiveAsFlow().combine(userOnlineStatusFlow.receiveAsFlow()) { chats, usersStatus ->
+
+            val orders = chats.values.associate {
+                    chat -> chat.id to chat.positions.firstOrNull() {
+                    position -> position.order > 0
+                }?.order
             }
 
-            RawChat(
-                transformedChats,
-                usersStatus
-            )
+            val sortedRawChats = chats.values.sortedByDescending { orders[it.id] }
+
+            val resultChats = sortedRawChats.map { chat ->
+
+                val isPinned = chat.positions.count { it.isPinned } != 0
+                val isMuted = chat.notificationSettings.muteFor != 0
+                val unreadMessagesCount = chat.unreadCount
+
+                val lastMessageType: LastMessageType = getChatListLastMessageType(chat)
+
+                val chatListItemModel = ChatListItemModel(
+                    id = chat.id,
+                    imagePath = chat.photo?.small?.local?.path,
+                    personName = chat.title.trim(),
+                    lastMessageId = (chat.lastMessage?.id ?: 0).toString(),
+                    lastMessageType = lastMessageType,
+                    lastMessageDateTimestamp = chat.lastMessage?.date?.toLong(),
+                    unreadMessagesCount = unreadMessagesCount,
+                    isPinned = isPinned,
+                    isMuted = isMuted,
+                    isOnline = usersStatus[chat.id] == true,
+                    hasOnlineStatus = chat.id > 0L
+                )
+
+                chatListItemModel
+            }
+
+            ArrayList(resultChats)
         }
-        .flowOn(threadContext)
     }
+
+    private fun getChatListLastMessageType(chat: TdApi.Chat): LastMessageType {
+        val lastMessageType: LastMessageType
+
+        val draftMessage = chat.draftMessage
+        if (draftMessage != null) {
+            val inputMessageText = draftMessage.inputMessageText as TdApi.InputMessageText
+            lastMessageType = LastMessageType.Draft(text = inputMessageText.text.text)
+        } else {
+            when (val chatContent = chat.lastMessage?.content) {
+                is TdApi.MessageText -> {
+                    lastMessageType = LastMessageType.Text(text = chatContent.text.text)
+                }
+
+                is TdApi.MessageDocument -> {
+                    lastMessageType =
+                        LastMessageType.Document(filename = chatContent.document.fileName)
+                }
+
+                is TdApi.MessagePhoto -> {
+                    lastMessageType = LastMessageType.Photo
+                }
+
+                is TdApi.MessageVideo -> {
+                    lastMessageType = LastMessageType.Video
+                }
+
+                is TdApi.MessageVoiceNote -> {
+                    lastMessageType = LastMessageType.VoiceNote
+                }
+
+                is TdApi.MessageAnimation -> {
+                    lastMessageType = LastMessageType.Animation
+                }
+
+                is TdApi.MessageSticker -> {
+                    val stickerEmoji = chatContent.sticker.emoji
+                    lastMessageType = LastMessageType.Sticker(emoji = stickerEmoji)
+                }
+
+                is TdApi.MessageAnimatedEmoji -> {
+                    val stickerEmoji = chatContent.emoji
+                    lastMessageType = LastMessageType.AnimatedEmoji(emoji = stickerEmoji)
+                }
+
+                else -> {
+                    lastMessageType = LastMessageType.Other
+                }
+            }
+        }
+        return lastMessageType
+    }
+
+
 }

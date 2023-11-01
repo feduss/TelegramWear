@@ -1,9 +1,6 @@
-package com.feduss.telegramwear.view.component.card.chatlist
+package com.feduss.telegramwear.view.component.card.chat.list
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,20 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.Card
-import androidx.wear.compose.material.CardDefaults
-import androidx.wear.compose.material.Icon
-import androidx.wear.compose.material.Text
-import com.feduss.telegramwear.R
-import com.feduss.telegramwear.colors.AppColors
 import com.valentinilk.shimmer.shimmer
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatItemSkeleton() {
+fun ChatListItemSkeleton() {
 
     Card(
         modifier = Modifier.shimmer(),

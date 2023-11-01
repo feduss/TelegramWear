@@ -1,47 +1,40 @@
 package com.feduss.telegramwear.business
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Paint.Align
-import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat
-import com.feduss.telegram.entity.consts.AuthStatus
-import com.feduss.telegram.entity.model.ChatItemModel
-import com.feduss.telegramwear.business.result.LoadChatResult
-import com.feduss.telegramwear.business.result.QrCodeResult
-import com.feduss.telegramwear.data.ClientRepository
+import com.feduss.telegram.entity.LoadChatResult
+import com.feduss.telegram.entity.LoggedUser
 import com.feduss.telegram.entity.QrCodeResult
+import com.feduss.telegram.entity.consts.AuthStatus
+import com.feduss.telegram.entity.model.ChatHistoryItemModel
+import com.feduss.telegram.entity.model.ChatListItemModel
+import com.feduss.telegramwear.data.ClientRepository
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import org.drinkless.td.libcore.telegram.TdApi
-import org.drinkless.td.libcore.telegram.TdApi.InputMessageText
-import java.io.File
-import java.time.Duration
-import java.time.Instant
-import java.time.Instant.now
 import javax.inject.Inject
 
 interface ClientInteractor {
+    fun logout(): Flow<Boolean>
     fun sendOTP(phoneNumber: String): Flow<Boolean>
     fun checkOTP(otp: String): Flow<Boolean>
     fun retrieveQrCode(): Flow<QrCodeResult>
     fun checkPassword(password: String): Flow<Boolean>
     fun getAuthStatus(): Flow<AuthStatus>
-    fun retrieveChats(limit: Int): Flow<LoadChatResult>
-    fun getChats(context: Context): Flow<ArrayList<ChatItemModel>>
+    fun getMe(): Flow<LoggedUser?>
+    fun requestChats(limit: Int): Flow<LoadChatResult>
+    fun getChatModels(context: Context): Flow<ArrayList<ChatListItemModel>>
 }
 
 class ClientInteractorImpl @Inject constructor(
     private val clientRepository: ClientRepository
 ): ClientInteractor {
+
+    override fun logout(): Flow<Boolean> {
+        return clientRepository.logout()
+    }
 
     override fun sendOTP(phoneNumber: String): Flow<Boolean> {
         return clientRepository.sendOTP(phoneNumber)
@@ -80,147 +73,21 @@ class ClientInteractorImpl @Inject constructor(
                 else -> AuthStatus.Unknown
             }
         }
+    }
 
+    override fun getMe(): Flow<LoggedUser?> {
+        return clientRepository.getMe()
     }
 
     // TODO: temp impl
-    override fun retrieveChats(limit: Int): Flow<LoadChatResult> {
+    override fun requestChats(limit: Int): Flow<LoadChatResult> {
 
-        return clientRepository.retrieveChats(limit).map { result ->
-            when(result) {
-                is LoadChatResponse.ChatUpdated -> {
-                    LoadChatResult.ChatUpdated
-                }
-
-                is LoadChatResponse.NoMoreChat -> {
-                    LoadChatResult.NoMoreChat
-                }
-
-                else -> {
-                    LoadChatResult.LoadingError
-                }
-            }
-        }
+        return clientRepository.requestChats(limit)
     }
 
-    override fun getChats(context: Context): Flow<ArrayList<ChatItemModel>> {
-
-        return clientRepository.getChats().map { rawChats ->
-            val orders = rawChats.chats.associate {
-                    chat -> chat.id to chat.positions.firstOrNull() {
-                    position -> position.order > 0
-                }?.order
-            }
-
-            val sortedRawChats = rawChats.chats.sortedByDescending { orders[it.id] }
-
-            val resultChats = sortedRawChats.map { chat ->
-
-                val personName = chat.title ?: context.getString(R.string.chat_title_deleted_account)
-
-                val image = getProfilePhoto(chat, personName)
-
-                var (lastMessageImage: Bitmap?, lastMessage) = getLastMessage(chat, context)
-
-                val lastMessageDate: String = getLastMessageDate(
-                    chat,
-                    context
-                )
-
-
-                val isPinned = chat.positions.count { it.isPinned } != 0
-                val isMuted = chat.notificationSettings.muteFor != 0
-                val unreadMessagesCount = chat.unreadCount
-
-                //TODO: to remove, only for app demonstration purpose
-                //val replacementText: String = lastMessage.map { '*' }.joinToString("")
-                //lastMessage = lastMessage.trim().replaceRange(0, lastMessage.length, replacementText)
-                //
-
-                val chatItemModel = ChatItemModel(
-                    image = image,
-                    personName = personName.trim(),
-                    lastMessageImage = lastMessageImage,
-                    lastMessage = lastMessage,
-                    lastMessageDate = lastMessageDate,
-                    unreadMessagesCount = unreadMessagesCount,
-                    isPinned = isPinned,
-                    isMuted = isMuted,
-                    isOnline = rawChats.usersStatus[chat.id] == true
-                )
-
-                chatItemModel
-            }
-
-            ArrayList(resultChats)
-        }
-        .flowOn(Dispatchers.IO)
+    override fun getChatModels(context: Context): Flow<ArrayList<ChatListItemModel>> {
+        return clientRepository.getChatModels()
     }
-
-    private fun getProfilePhoto(chat: TdApi.Chat, personName: String): Bitmap {
-        val photoData = chat.photo?.small?.local?.path
-        val image: Bitmap = try {
-
-            if (File(photoData ?: "").exists()) {
-                BitmapFactory.decodeFile(photoData)
-            } else {
-                getDefaultImageWithText(personName, chat.id)
-            }
-        } catch(e: Exception) {
-            getDefaultImageWithText(personName, chat.id)
-        }
-
-        return image
-    }
-
-    private fun getLastMessage(chat: TdApi.Chat,context: Context): Pair<Bitmap?, String> {
-        var lastMessageImage: Bitmap? = null
-        val lastMessage: String
-
-        val draftMessage = chat.draftMessage
-        if (draftMessage != null) {
-            val inputMessageText = draftMessage.inputMessageText as InputMessageText
-            lastMessage = context.getString(R.string.last_message_draft, inputMessageText.text.text)
-        } else {
-            when (val chatContent = chat.lastMessage?.content) {
-                is TdApi.MessageText -> {
-                    lastMessage = chatContent.text.text
-                }
-
-                is TdApi.MessageDocument -> {
-                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_file)
-                    lastMessage = chatContent.document.fileName
-                }
-
-                is TdApi.MessagePhoto -> {
-                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_photo)
-                    lastMessage = "Foto"
-                }
-
-                is TdApi.MessageVideo -> {
-                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_video)
-                    lastMessage = "Video"
-                }
-
-                is TdApi.MessageVoiceNote -> {
-                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_music)
-                    lastMessage = "Audio"
-                }
-
-                is TdApi.MessageAnimation -> {
-                    lastMessageImage = getBitmapFromVectorDrawable(context, R.drawable.ic_gif)
-                    lastMessage = "GIF"
-                }
-
-                is TdApi.MessageSticker -> {
-                    val stickerEmoji = chatContent.sticker.emoji
-                    lastMessage = "${stickerEmoji} Sticker"
-                }
-
-                is TdApi.MessageAnimatedEmoji -> {
-                    val stickerEmoji = chatContent.emoji
-                    lastMessage = "${stickerEmoji} Sticker"
-                }
 
                 else -> {
                     lastMessage = context.getString(R.string.last_message_unsupported_message)

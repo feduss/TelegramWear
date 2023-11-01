@@ -1,4 +1,4 @@
-package com.feduss.telegramwear.view.component.card.chatlist
+package com.feduss.telegramwear.view.component.card.chat.list
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -33,14 +33,14 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.wear.compose.material.Card
 import androidx.wear.compose.material.CardDefaults
 import androidx.wear.compose.material.Text
-import com.feduss.telegram.entity.model.ChatItemModel
+import com.feduss.telegram.entity.model.ChatListItemUiModel
 import com.feduss.telegramwear.R
 import com.feduss.telegramwear.colors.AppColors
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatItem(
-    model: ChatItemModel,
+fun ChatListItem(
+    model: ChatListItemUiModel,
     cardTintColor: Color = Color.Black,
     onCardClick: () -> Unit = {}
 ) {
@@ -95,22 +95,24 @@ fun ChatItem(
                     contentDescription = "${model.personName} profile picture"
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (model.isOnline) {
-                                Color.Green
-                            } else {
-                                Color.LightGray
+                if (model.hasOnlineStatus) {
+                    Box(
+                        modifier = Modifier
+                            .size(4.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (model.isOnline) {
+                                    Color.Green
+                                } else {
+                                    Color.LightGray
+                                }
+                            )
+                            .constrainAs(onlineStatus) {
+                                absoluteLeft.linkTo(profilePhoto.absoluteLeft, margin = (-4).dp)
+                                bottom.linkTo(profilePhoto.bottom, margin = 2.dp)
                             }
-                        )
-                        .constrainAs(onlineStatus) {
-                            absoluteLeft.linkTo(profilePhoto.absoluteLeft, margin = (-4).dp)
-                            bottom.linkTo(profilePhoto.bottom, margin = 2.dp)
-                        }
-                )
+                    )
+                }
 
                 if (model.isPinned) {
                     Image(
