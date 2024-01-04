@@ -8,6 +8,7 @@ sealed class Section(val baseRoute: String, val parametricRoute: String = "") {
     data object LoginOtpVerification: Section("LoginOtpVerification")
     data object Login2FAVerification: Section("Login2FAVerification")
     data object ChatList: Section("ChatList")
+    data object ChatHistory: Section("ChatHistory", "ChatHistory/{${Params.ChatId.name}}")
     //object Setup: Section("setup")
     //object Edit: Section("edit", "edit/{tag}")
     //object Timer: Section("timer", "timer?chipIndex={chipIndex}&cycleIndex={cycleIndex}&timerSeconds={timerSeconds}")

@@ -29,6 +29,8 @@ import org.drinkless.td.libcore.telegram.TdApi.SetLogVerbosityLevel
 import org.drinkless.td.libcore.telegram.TdApi.UpdateChatTitle
 import org.drinkless.td.libcore.telegram.TdApi.UserStatusOnline
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
 import javax.inject.Inject
 
 
@@ -43,6 +45,8 @@ interface ClientRepository {
     fun getMe(): Flow<LoggedUser?>
     fun requestChats(limit: Int): Flow<LoadChatResult>
     fun getChatModels(): Flow<ArrayList<ChatListItemModel>>
+
+    fun getChatHistory(chatId: Long, lastMessageId: Long, fetchLimit: Int): Flow<ArrayList<ChatHistoryItemModel>>
 }
 
 class ClientRepositoryImpl @Inject constructor(
@@ -60,10 +64,12 @@ class ClientRepositoryImpl @Inject constructor(
 
     private var userOnlineStatus = mapOf<Long, Boolean?>()
 
-    private var userOnlineStatusFlow = Channel<Map<Long, Boolean?>>(
-    )
+    private var userOnlineStatusFlow = Channel<Map<Long, Boolean?>>()
 
     private var userInfo = HashMap<Long, TdApi.User>()
+
+    private var prevHistoryChatId = -1L
+    private var prevChatHistory = listOf<TdApi.Message>()
 
 
     init {
@@ -489,9 +495,7 @@ class ClientRepositoryImpl @Inject constructor(
                 }?.order
             }
 
-            val sortedRawChats = chats.values.sortedByDescending { orders[it.id] }
-
-            val resultChats = sortedRawChats.map { chat ->
+            val resultChats = chats.values.map { chat ->
 
                 val isPinned = chat.positions.count { it.isPinned } != 0
                 val isMuted = chat.notificationSettings.muteFor != 0
@@ -510,7 +514,8 @@ class ClientRepositoryImpl @Inject constructor(
                     isPinned = isPinned,
                     isMuted = isMuted,
                     isOnline = usersStatus[chat.id] == true,
-                    hasOnlineStatus = chat.id > 0L
+                    hasOnlineStatus = chat.id > 0L,
+                    orderId = orders[chat.id] ?: 0
                 )
 
                 chatListItemModel
@@ -572,5 +577,364 @@ class ClientRepositoryImpl @Inject constructor(
         return lastMessageType
     }
 
+    override fun getChatHistory(chatId: Long, lastMessageId: Long, fetchLimit: Int) = flow {
+        val completionDeferred = CompletableDeferred<ArrayList<ChatHistoryItemModel>>()
+        client.send(
+            TdApi.GetChatHistory(
+                chatId,
+                lastMessageId,
+                0,
+                fetchLimit,
+                false
+            )
+        ) { tdApiObject ->
 
+            if (tdApiObject is TdApi.Messages) {
+                getUsersInfo(tdApiObject) {
+                    populateChatHistory(chatId, tdApiObject, completionDeferred)
+                }
+            } else {
+                completionDeferred.complete(ArrayList())
+            }
+        }
+
+        emit(completionDeferred.await())
+    }
+
+    private fun getUsersInfo(
+        tdApiObject: TdApi.Messages,
+        completion: () -> Unit
+    ) {
+        val senderIds = tdApiObject.messages.mapNotNull { message ->
+            val messageSenderUser = message.senderId as? TdApi.MessageSenderUser
+            val id = messageSenderUser?.userId
+
+            if (!userInfo.values.map { it.id }.contains(id)) {
+                return@mapNotNull id
+            } else {
+                return@mapNotNull null
+            }
+        }
+
+        val forwardsUserIds = tdApiObject.messages.mapNotNull { message ->
+            val forwardOrigin = message.forwardInfo?.origin as? TdApi.MessageForwardOriginUser
+            val id = forwardOrigin?.senderUserId
+
+            if (!userInfo.values.map { it.id }.contains(id)) {
+                return@mapNotNull id
+            } else {
+                return@mapNotNull null
+            }
+        }
+
+        val forwardsChatIds = tdApiObject.messages.mapNotNull { message ->
+            val forwardOrigin = message.forwardInfo?.origin as? TdApi.MessageForwardOriginChannel
+
+            if (forwardOrigin != null) {
+                val a = 0
+            }
+
+            return@mapNotNull forwardOrigin?.chatId
+        }
+
+        val userIds = senderIds + forwardsUserIds
+
+        userIds.forEach { userId ->
+            retrieveUserById(userId) {
+                if (userInfo.values.map { it.id }.containsAll(userIds)) {
+                    completion()
+                }
+            }
+        }
+    }
+
+    private fun retrieveUserById(id: Long, completion: () -> Unit) {
+        client.send(TdApi.GetUser(id)) { userObject ->
+            if (userObject is TdApi.User) {
+                userInfo[id] = userObject
+            }
+
+            completion()
+        }
+    }
+
+    private fun populateChatHistory(
+        chatId: Long,
+        tdApiObject: TdApi.Messages,
+        completionDeferred: CompletableDeferred<ArrayList<ChatHistoryItemModel>>
+    ) {
+
+        val chatHistory = tdApiObject.messages.asList()
+
+        if (chatId == prevHistoryChatId) {
+            prevChatHistory += chatHistory
+        } else {
+            prevChatHistory = chatHistory
+            prevHistoryChatId = chatId
+        }
+
+        val models = prevChatHistory.map { rawMessage ->
+
+            val chatContent = rawMessage.content
+            val messageType: ChatHistoryMessageType =
+                getChatHistoryMessageType(chatContent)
+
+            //TODO: to test
+            val quotedMessageRaw =
+                prevChatHistory.firstOrNull { it.id == rawMessage.replyToMessageId }
+            val quotedMessage = if (quotedMessageRaw != null) {
+                getChatHistoryMessageType(quotedMessageRaw.content)
+            } else {
+                null
+            }
+
+            val quotedMessageAuthorId = quotedMessageRaw?.senderId
+            val quotedMessageAuthor = if (quotedMessageAuthorId is TdApi.MessageSenderUser) {
+                val user = userInfo.values.firstOrNull { it.id == quotedMessageAuthorId.userId }
+                MessageAuthor(
+                    id = user?.id ?: 0L,
+                    name = "${user?.firstName} ${user?.lastName}"
+                )
+            } else {
+                null
+            }
+
+            val senderId = rawMessage.senderId
+            val author = if (senderId is TdApi.MessageSenderUser) {
+                val user = userInfo.values.firstOrNull { it.id == senderId.userId }
+                MessageAuthor(
+                    id = user?.id ?: 0L,
+                    name = "${user?.firstName} ${user?.lastName}"
+                )
+            } else {
+                null
+            }
+
+            val datetime = Instant.ofEpochSecond(rawMessage.date.toLong())
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime()
+
+            val sendState = when (rawMessage.sendingState) {
+
+                is TdApi.MessageSendingStatePending -> {
+                    MessageSendState.Pending
+                }
+
+                is TdApi.MessageSendingStateFailed -> {
+                    MessageSendState.Failed
+                }
+
+                else -> {
+                    null
+                }
+            }
+
+            var forwardAuthor: String? = null
+            val forwardInfoOrigin = rawMessage.forwardInfo?.origin
+
+            if (forwardInfoOrigin is TdApi.MessageForwardOriginUser) {
+                forwardAuthor = userInfo[forwardInfoOrigin.senderUserId]?.username
+            }
+
+            val messageDeletionOption =
+                if (rawMessage.canBeDeletedOnlyForSelf) {
+                    MessageDeletionOption.OnlyForMe
+                } else if (rawMessage.canBeDeletedForAllUsers) {
+                    MessageDeletionOption.ForAll
+                } else {
+                    MessageDeletionOption.None
+                }
+
+            ChatHistoryItemModel(
+                id = rawMessage.id,
+                type = messageType,
+                quotedMessageAuthor = quotedMessageAuthor,
+                quotedMessage = quotedMessage,
+                author = author,
+                datetime = datetime,
+                sendState = sendState,
+                isPinned = rawMessage.isPinned,
+                isEdited = rawMessage.editDate > 0, //TODO: to test
+                canBeEdited = rawMessage.canBeEdited,
+                isRead = false, //TOOD: to impl
+                forwardAuthor = forwardAuthor,
+                canBeForward = rawMessage.canBeForwarded,
+                messageDeletionOption = messageDeletionOption,
+                isChannelPost = rawMessage.isChannelPost
+            )
+        }
+        completionDeferred.complete(
+            ArrayList(models)
+        )
+    }
+
+    private fun getChatHistoryMessageType(chatContent: TdApi.MessageContent?) =
+        when (chatContent) {
+            is TdApi.MessageText -> {
+                ChatHistoryMessageType.Text(
+                    message = chatContent.text.text.trim()
+                )
+            }
+
+            is TdApi.MessageDocument -> {
+
+                ChatHistoryMessageType.Document(
+                    fileName = chatContent.document.fileName,
+                    filePath = chatContent.document.document.local.path,
+                    remoteId = chatContent.document.document.remote.id
+                )
+            }
+
+            is TdApi.MessagePhoto -> {
+
+                val thumbnailByteArray = chatContent.photo.minithumbnail?.data
+                var thumbnail: Bitmap? = null
+
+                if (thumbnailByteArray != null) {
+                    thumbnail = BitmapFactory.decodeByteArray(
+                        thumbnailByteArray,
+                        0, thumbnailByteArray.size
+                    )
+                }
+
+                val photoPath = chatContent.photo.sizes.first().photo.local.path
+                var photo: Bitmap? = null
+
+                if (photoPath != null) {
+                    photo = BitmapFactory.decodeFile(photoPath)
+                }
+
+                if (thumbnail != null) {
+                    ChatHistoryMessageType.Photo(
+                        photoBitmap = photo,
+                        caption = chatContent.caption.text,
+                        filePath = photoPath, //TODO: select correct size
+                        remoteId = chatContent.photo.sizes.first().photo.remote.id, //TODO: select correct size,
+                        thumbnail = thumbnail
+                    )
+                } else {
+                    ChatHistoryMessageType.Other
+                }
+
+
+            }
+
+            is TdApi.MessageVideo -> {
+
+                val thumbnailByteArray = chatContent.video.minithumbnail?.data
+                var thumbnail: Bitmap? = null
+
+                if (thumbnailByteArray != null) {
+                    thumbnail = BitmapFactory.decodeByteArray(
+                        thumbnailByteArray,
+                        0, thumbnailByteArray.size
+                    )
+                }
+
+                if (thumbnail != null) {
+                    ChatHistoryMessageType.Video(
+                        caption = "Video: ${chatContent.caption.text}",
+                        filePath = chatContent.video.video.local.path,
+                        remoteId = chatContent.video.video.remote.id,
+                        duration = chatContent.video.duration,
+                        thumbnail = thumbnail
+                    )
+                } else {
+                    ChatHistoryMessageType.Other
+                }
+            }
+
+            is TdApi.MessageVoiceNote -> {
+
+                ChatHistoryMessageType.Audio(
+                    caption = "Audio: ${chatContent.caption.text}",
+                    filePath = chatContent.voiceNote.voice.local.path,
+                    remoteId = chatContent.voiceNote.voice.remote.id,
+                    duration = chatContent.voiceNote.duration
+                )
+            }
+
+            is TdApi.MessageAnimation -> {
+
+                val thumbnailByteArray =
+                    chatContent.animation.minithumbnail?.data
+                var thumbnail: Bitmap? = null
+
+                if (thumbnailByteArray != null) {
+                    thumbnail = BitmapFactory.decodeByteArray(
+                        thumbnailByteArray,
+                        0, thumbnailByteArray.size
+                    )
+                }
+
+                if (thumbnail != null) {
+                    ChatHistoryMessageType.Video(
+                        caption = "GIF: ${chatContent.caption.text}",
+                        filePath = chatContent.animation.animation.local.path,
+                        remoteId = chatContent.animation.animation.remote.id,
+                        duration = chatContent.animation.duration,
+                        thumbnail = thumbnail
+                    )
+                } else {
+                    ChatHistoryMessageType.Other
+                }
+            }
+
+            is TdApi.MessageSticker -> {
+
+                val thumbnailPath =
+                    chatContent.sticker.thumbnail?.file?.local?.path
+                var thumbnail: Bitmap? = null
+
+                if (thumbnailPath != null) {
+                    thumbnail = BitmapFactory.decodeFile(thumbnailPath)
+                }
+
+                val photoPath = chatContent.sticker.sticker.local.path
+                var photo: Bitmap? = null
+
+                if (photoPath != null) {
+                    photo = BitmapFactory.decodeFile(photoPath)
+                }
+
+                if (thumbnail != null) {
+                    ChatHistoryMessageType.Photo(
+                        photoBitmap = photo,
+                        caption = "${chatContent.sticker.emoji} Sticker",
+                        filePath = photoPath,
+                        remoteId = chatContent.sticker.sticker.remote.id,
+                        thumbnail = thumbnail
+                    )
+                } else {
+                    ChatHistoryMessageType.Other
+                }
+            }
+
+            is TdApi.MessageAnimatedEmoji -> {
+
+                val thumbnailPath =
+                    chatContent.animatedEmoji.sticker.thumbnail?.file?.local?.path
+                var thumbnail: Bitmap? = null
+
+                if (thumbnailPath != null) {
+                    thumbnail = BitmapFactory.decodeFile(thumbnailPath)
+                }
+
+                if (thumbnail != null) {
+                    ChatHistoryMessageType.Video(
+                        caption = "${chatContent.emoji} Sticker",
+                        filePath = chatContent.animatedEmoji.sticker.sticker.local.path,
+                        remoteId = chatContent.animatedEmoji.sticker.sticker.remote.id,
+                        duration = -1,
+                        thumbnail
+                    )
+                } else {
+                    ChatHistoryMessageType.Other
+                }
+            }
+
+            else -> {
+                ChatHistoryMessageType.Other
+            }
+        }
 }
