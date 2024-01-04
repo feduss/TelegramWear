@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.feduss.telegramwear.utils'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 30
@@ -30,7 +30,7 @@ android {
 dependencies {
 
     //Kotlin core
-    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
 
     //Androidx for legacy support
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.feduss.telegramwear.entity'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 30
@@ -33,7 +33,7 @@ dependencies {
     implementation project(path: ':utils')
 
     //Kotlin core
-    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
 
     //Testing
     testImplementation 'junit:junit:4.13.2'
