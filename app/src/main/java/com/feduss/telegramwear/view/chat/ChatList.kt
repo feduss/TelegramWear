@@ -51,16 +51,18 @@ fun ChatList(
 
     val coroutine = rememberCoroutineScope()
 
-    LaunchedEffect(firstTimeLoading) {
+    LaunchedEffect(firstTimeLoading.value) {
 
-        Log.i("LogTest: ", "Loading chats list")
+        if (firstTimeLoading.value) {
+            Log.i("LogTest: ", "Loading chats list")
 
-        coroutine.launch {
-            viewModel.getChatModels(context = activity)
-        }
+            coroutine.launch {
+                viewModel.getChatModels(context = activity)
+            }
 
-        coroutine.launch {
-            viewModel.requestChats()
+            coroutine.launch {
+                viewModel.requestChats()
+            }
         }
     }
 
@@ -102,7 +104,6 @@ fun ChatList(
                             navController.currentBackStackEntry?.savedStateHandle?.apply {
                                 set("profilePhoto", it.image)
                                 set("profileName", it.personName)
-                                set("lastMessageId", it.lastMessageId)
                             }
 
                             navController.navigate(Section.ChatHistory.withArgs(args))
