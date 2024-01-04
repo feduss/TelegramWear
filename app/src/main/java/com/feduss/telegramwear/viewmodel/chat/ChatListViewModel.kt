@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.feduss.telegram.entity.LoadChatResult
@@ -16,6 +15,7 @@ import com.feduss.telegram.entity.model.ChatListItemModel
 import com.feduss.telegram.entity.model.ChatListItemUiModel
 import com.feduss.telegramwear.R
 import com.feduss.telegramwear.business.ClientInteractor
+import com.feduss.telegramwear.utils.getBitmapFromVectorDrawable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import java.io.File
@@ -66,13 +66,14 @@ class ChatListViewModel @Inject constructor(
 
         state["firstTimeLoading"] = false
 
-        return clientInteractor.getChatModels(context = context).collect {
-            state["chatsList"] = it.map { chatListItemModel ->
+        return clientInteractor.getChatModels(context = context).collect { chats ->
+            state["chatsList"] = chats.map { chatListItemModel ->
                 from(
                     chatListItemModel,
                     context = context
                 )
             }
+            .sortedByDescending { it.orderId }
         }
     }
 
@@ -104,7 +105,8 @@ class ChatListViewModel @Inject constructor(
             isPinned = chatListItemModel.isPinned,
             isMuted = chatListItemModel.isMuted,
             isOnline = chatListItemModel.isOnline,
-            hasOnlineStatus = chatListItemModel.hasOnlineStatus
+            hasOnlineStatus = chatListItemModel.hasOnlineStatus,
+            orderId = chatListItemModel.orderId
         )
     }
 
@@ -240,19 +242,6 @@ class ChatListViewModel @Inject constructor(
         }
 
         return Pair(lastMessageImage, lastMessage)
-    }
-
-    private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap? {
-        val drawable = ContextCompat.getDrawable(context, drawableId) ?: return null
-
-        val bitmap = Bitmap.createBitmap(
-            drawable.intrinsicWidth,
-            drawable.intrinsicHeight, Bitmap.Config.ARGB_8888
-        )
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bitmap
     }
 
     private fun getLastMessageDate(context: Context, timestamp: Long?): String {

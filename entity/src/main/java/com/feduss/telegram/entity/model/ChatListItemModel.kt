@@ -8,5 +8,6 @@ class ChatListItemModel(
     val unreadMessagesCount: Int,
     val isPinned: Boolean, val isMuted: Boolean,
     val isOnline: Boolean, val hasOnlineStatus: Boolean,
+    val orderId: Long
 ) {
 }
